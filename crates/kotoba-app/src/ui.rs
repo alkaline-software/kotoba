@@ -154,6 +154,14 @@ const KEY_WORDS: [&str; 5] = ["Tab", "Esc", "Enter", "Space", "Return"];
 /// The signs a key is written with.
 const KEY_SIGNS: [char; 9] = ['⌘', '⌥', '⇧', '⌃', '🌐', '↩', '⇥', '↑', '↓'];
 
+/// How long an F key's name (F1 to F20) is at the head of `s`, when one
+/// is there and is a word of its own.
+fn f_word(s: &str) -> Option<usize> {
+    let digits: String = s.strip_prefix('F')?.chars().take_while(char::is_ascii_digit).collect();
+    let after = s.chars().nth(1 + digits.len());
+    (kotoba_core::dictate::f_key(&format!("f{digits}")).is_some() && after.is_none_or(|c| !c.is_alphanumeric())).then_some(1 + digits.len())
+}
+
 /// A key's cap is this tall, and no narrower.
 const KEY_CAP: f32 = 17.;
 
@@ -162,6 +170,10 @@ const KEY_CAP: f32 = 17.;
 /// of `KEY_WORDS`), or signs alone ("⇧↩"). Brackets that hold nothing
 /// but shortcuts are dropped: the caps set them apart already.
 fn key_pieces(text: &str) -> Vec<KeyPiece> {
+    // An F key alone, as dictation's key is shown: one cap.
+    if f_word(text) == Some(text.chars().count()) {
+        return vec![KeyPiece::Keys(vec![text.to_string()])];
+    }
     let chars: Vec<char> = text.chars().collect();
     let mut out: Vec<KeyPiece> = Vec::new();
     let mut words = String::new();
@@ -182,6 +194,9 @@ fn key_pieces(text: &str) -> Vec<KeyPiece> {
         if let Some(w) = KEY_WORDS.iter().find(|w| rest.starts_with(**w)) {
             keys.push(w.to_string());
             i += w.chars().count();
+        } else if let Some(n) = f_word(&rest) {
+            keys.push(rest.chars().take(n).collect());
+            i += n;
         } else if let Some(c) = chars.get(i).filter(|c| !c.is_whitespace() && !matches!(c, ')' | '(')) {
             let alone = chars.get(i + 1).is_none_or(|n| !n.is_alphanumeric());
             if alone && (c.is_alphanumeric() || matches!(c, ',' | '.' | '/' | '[' | ']' | '-' | '=')) && keys.iter().any(|k| k == "⌘" || k == "⌥") {

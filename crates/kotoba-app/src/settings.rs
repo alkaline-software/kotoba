@@ -528,20 +528,19 @@ impl Kotoba {
             }))
             .child(if recording { div().text_color(theme.muted_foreground).child(t("Press the keys")).into_any_element() } else { key_combo(&dictate_key_signs(&app.dictate_key), theme.muted_foreground).into_any_element() })
             .into_any_element();
-        // Modifiers alone, which no key pressed in the field can be, are
-        // chosen from a list that rises from More.
-        let tap = kotoba_core::dictate::tap(&app.dictate_key);
+        // Modifiers alone, which no key pressed in the field can be, and
+        // the F keys, are chosen from the list that drops from More.
         let more_open = self.pick.as_ref().is_some_and(|p| p.what == PickFor::DictateKey);
         let more = div()
             .relative()
             .flex_shrink_0()
             .child(
-                small_pill("dictate-key-more", "icons/chevron-up.svg", t("More"), Press::Quiet, false, &theme)
+                small_pill("dictate-key-more", "icons/chevron-down.svg", t("More"), Press::Quiet, false, &theme)
                     .h(px(28.))
                     .min_w(DICTATE_PILL_W)
                     .justify_center()
                     .when(more_open, |d| d.bg(theme.muted_foreground.opacity(0.16)))
-                    .managed_tooltip(|window, cx| tip(t("Modifier keys tapped alone"), window, cx))
+                    .managed_tooltip(|window, cx| tip(t("Modifier keys and F keys"), window, cx))
                     .on_click(cx.listener(|this, _: &ClickEvent, window, cx| {
                         swallow_click(window, cx);
                         this.dictate_key_rec = false;
@@ -559,18 +558,28 @@ impl Kotoba {
         let said = self.dictate_kept.borrow().0.clone();
         let note = self.fold_under("dictate-key-note".into(), note.is_some(), h_flex().w_full().pb(px(10.)).justify_end().text_size(px(12.)).text_color(theme.muted_foreground).child(key_text(&said)).into_any_element(), cx);
         // With Fn chosen and the Mac giving it a job of its own, a tap
-        // would do both: how to give the Mac's up, in Keyboard settings.
-        // It goes once the window comes back with that done.
-        let fn_job = if tap.is_some_and(|t| t.key == "fn") { self.fn_use.flatten() } else { None };
-        if let Some(job) = fn_job {
-            self.dictate_kept.borrow_mut().1 = job;
+        // would do both; with F1 to F12 and the Mac's keys doing what is
+        // printed on them, the key would not reach Kotoba at all. How to
+        // change it, in Keyboard settings. It goes once the window comes
+        // back with that done.
+        let key_job = if crate::kotoba::key_has_use(&app.dictate_key) { self.key_use.flatten() } else { None };
+        if let Some(job) = key_job {
+            let mut kept = self.dictate_kept.borrow_mut();
+            kept.1 = job;
+            kept.2 = dictate_key_signs(&app.dictate_key);
         }
         let job = self.dictate_kept.borrow().1;
-        let also = match job {
-            "input" => t("Fn 🌐 would also change the input source."),
-            "emoji" => t("Fn 🌐 would also show emoji and symbols."),
-            "dictation" => t("Fn 🌐 would also start Apple's dictation."),
-            _ => t("Fn 🌐 also has a use in macOS."),
+        let words = if job == "printed" {
+            let key = self.dictate_kept.borrow().2.clone();
+            format!("{} {}", tf("On Apple keyboards, {key} does what is printed on it unless Fn 🌐 is held.", &[("key", &key)]), t("Or turn on “Use F1, F2, etc. keys as standard function keys” in Keyboard Shortcuts."))
+        } else {
+            let also = match job {
+                "input" => t("Fn 🌐 would also change the input source."),
+                "emoji" => t("Fn 🌐 would also show emoji and symbols."),
+                "dictation" => t("Fn 🌐 would also start Apple's dictation."),
+                _ => t("Fn 🌐 also has a use in macOS."),
+            };
+            format!("{also} {}", t("Set it to Do Nothing."))
         };
         let warn = theme.warning;
         let guide = h_flex()
@@ -593,11 +602,11 @@ impl Kotoba {
                     .flex_wrap()
                     .items_center()
                     .gap(px(8.))
-                    .child(key_text_wrap(&format!("{also} {}", t("Set it to Do Nothing."))).flex_grow(1.).flex_shrink(1.).flex_basis(px(150.)).min_w_0().text_size(px(12.5)))
+                    .child(key_text_wrap(&words).flex_grow(1.).flex_shrink(1.).flex_basis(px(150.)).min_w_0().text_size(px(12.5)))
                     .child(small_pill("dictate-fn-settings", "icons/external-link.svg", "Keyboard Settings", Press::Quiet, false, &theme).flex_shrink_0().on_click(|_, _, cx| cx.open_url(crate::sys::KEYBOARD_SETTINGS_URL))),
             )
             .into_any_element();
-        let guide = self.fold_under("dictate-fn-guide".into(), fn_job.is_some(), div().pb(px(10.)).child(guide).into_any_element(), cx);
+        let guide = self.fold_under("dictate-fn-guide".into(), key_job.is_some(), div().pb(px(10.)).child(guide).into_any_element(), cx);
         let theme_ref = &theme;
         vec![
             // The key's field, More and Reset at the row's right, and

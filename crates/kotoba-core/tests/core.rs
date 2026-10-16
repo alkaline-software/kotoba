@@ -105,6 +105,8 @@ fn dictation_tap_is_modifiers_alone_and_nothing_else() {
     let ctrl_shift = tap("tap:ctrl-shift").unwrap();
     assert!(tap("secondary-shift-d").is_none() && tap("tap:nothing").is_none());
     assert!(dictate::TAPS.iter().all(|t| tap(&format!("{}{}", dictate::TAP_PREFIX, t.key)) == Some(t)));
+    assert_eq!((dictate::f_key("f1"), dictate::f_key("f13"), dictate::f_key("f20")), (Some(1), Some(13), Some(20)));
+    assert!(["f0", "f01", "f21", "f", "secondary-f5", "tap:fn", "fn"].iter().all(|k| dictate::f_key(k).is_none()));
 
     let press = |w: &mut TapWatch, steps: &[u16], t| steps.iter().map(|h| w.flags(*h, t)).collect::<Vec<_>>();
     let mut w = TapWatch::default();

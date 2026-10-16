@@ -120,6 +120,12 @@ fn main() {
         gpui_component::init(cx);
         i18n::set(&i18n::chosen(&kotoba_core::config::Config::load().app.language));
         sys::stay_in_menu_bar();
+        // One Kotoba at a time, the one opened last, before this one's tap
+        // takes the key. A probe copy, with a home of its own, leaves the
+        // others be.
+        if std::env::var_os("KOTOBA_HOME").is_none() {
+            sys::end_other_kotobas();
+        }
         let cfg = kotoba_core::config::Config::load();
         // Written once, so the next launch is not a first one.
         if first {

@@ -90,11 +90,21 @@ nothing on a Mac sees another app's keys without it.
 held between nothing held and nothing held, with no key or click among
 them (`dictate::TapWatch`).
 
+**An F key may be dictation's key alone**, F1 to F20 (`dictate::f_key`,
+the Mac's codes in `sys::key_code`): pressed in the key's field, or
+chosen under More. Any other key wants ⌘ or ⌥. A keyboard made for it
+can send F13 to F20, which nothing on a Mac uses. AppKit gives every F
+key the function flag; gpui and the tap leave it out, so `f13` matches
+with or without Fn held.
+
 **Fn has a job of the Mac's own** unless the person gives it up
-(Keyboard settings, "Press 🌐 key to"). With Fn chosen and a job set, a
-line under the key's row says what Fn would also do, with a button to
-Keyboard settings; it is read again whenever the window comes back
-(`read_fn_use`).
+(Keyboard settings, "Press 🌐 key to"). **F1 to F12 on an Apple keyboard
+do what is printed on them** unless Fn is held, or "Use F1, F2, etc.
+keys as standard function keys" is on (`com.apple.keyboard.fnState`);
+pressed alone, the key never reaches Kotoba. With either chosen and the
+Mac's own use in place, a line under the key's row says so, with a
+button to Keyboard settings; it is read again whenever the window comes
+back (`read_key_use`).
 
 ## Post-processing, preferences and terms
 

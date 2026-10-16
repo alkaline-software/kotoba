@@ -13,8 +13,8 @@ use gpui::*;
 use gpui_component::scroll::ScrollableElement as _;
 use gpui_component::{h_flex, v_flex, ActiveTheme as _, Icon, IconName, Sizable as _};
 
-use crate::kotoba::{Inner, Kotoba, PickFor, PickMenu, PickRow};
-use crate::ui::{float_shadow, key_combo, swallow_click, FOLD_ANIM, MENU_IN, MENU_OUT};
+use crate::kotoba::{Inner, KeyGroup, Kotoba, PickFor, PickMenu, PickRow};
+use crate::ui::{dictate_key_signs, float_shadow, key_combo, swallow_click, FOLD_ANIM, MENU_IN, MENU_OUT};
 
 /// A wheel event this long after the previous one begins a new gesture: a
 /// mouse wheel sends no phases, and momentum comes at frame rate.
@@ -268,7 +268,33 @@ impl Kotoba {
         }
         self.pick_serial += 1;
         self.pick_gone = None;
+        self.key_group = None;
+        self.key_group_gone = None;
         self.pick = Some(PickMenu { what, rows: Rc::new(rows), current, by, serial: self.pick_serial });
+        cx.notify();
+    }
+
+    /// A kind on More's list pointed at or pressed: its keys open beside
+    /// it, and the kind open before goes out fading.
+    pub fn open_key_group(&mut self, group: KeyGroup, cx: &mut Context<Self>) {
+        if self.key_group.is_some_and(|(g, _)| g == group) {
+            return;
+        }
+        if let Some((g, n)) = self.key_group.take() {
+            self.key_group_gone = Some((g, n, Instant::now()));
+            cx.spawn(async move |this, cx| {
+                cx.background_executor().timer(MENU_OUT + Duration::from_millis(20)).await;
+                let _ = this.update(cx, |this, cx| {
+                    if this.key_group_gone.as_ref().is_some_and(|(_, _, at)| at.elapsed() >= MENU_OUT) {
+                        this.key_group_gone = None;
+                    }
+                    cx.notify();
+                });
+            })
+            .detach();
+        }
+        self.pick_serial += 1;
+        self.key_group = Some((group, self.pick_serial));
         cx.notify();
     }
 
@@ -299,7 +325,7 @@ impl Kotoba {
             return;
         }
         match what {
-            PickFor::DictateKey => self.set_dictate_key(format!("{}{key}", kotoba_core::dictate::TAP_PREFIX), cx),
+            PickFor::DictateKey => self.set_dictate_key(key.to_string(), cx),
             PickFor::DictateKeep => self.set_dictate_keep(key, cx),
             PickFor::Language => self.set_language(key, cx),
         }
@@ -309,11 +335,12 @@ impl Kotoba {
     fn pick_rows(&self, what: PickFor) -> (Vec<PickRow>, String) {
         use kotoba_core::dictate;
         match what {
-            // The keys alone, then under a line the pairs. What the Mac
-            // does with Fn is said under the key's row once it is chosen.
+            // The kinds of key, each opening its keys beside it
+            // (`render_key_group`). What the Mac does with Fn, or with F1
+            // to F12, is said under the key's row once it is chosen.
             PickFor::DictateKey => {
-                let rows = dictate::TAPS.iter().enumerate().map(|(ix, t)| PickRow { key: t.key.to_string(), name: crate::ui::tap_signs(t), rule: ix > 0 && t.pair() && !dictate::TAPS[ix - 1].pair() }).collect();
-                (rows, dictate::tap(&self.cfg.app.dictate_key).map(|t| t.key.to_string()).unwrap_or_default())
+                let rows = KeyGroup::ALL.iter().map(|g| PickRow { key: g.key().to_string(), name: g.name().to_string(), rule: false }).collect();
+                (rows, self.cfg.app.dictate_key.clone())
             }
             // The system's, then each language by its flag and letters.
             PickFor::Language => {
@@ -349,8 +376,8 @@ impl Kotoba {
         let card = v_flex()
             .id(("pick-card", menu.serial as usize))
             .absolute()
-            .min_w(if keys { px(200.) } else { menu.by.size.width })
-            .max_w(px(240.))
+            .min_w(if keys { px(220.) } else { menu.by.size.width })
+            .max_w(px(if keys { 320. } else { 240. }))
             .py(px(5.))
             .overflow_hidden()
             .rounded(px(12.))
@@ -361,7 +388,52 @@ impl Kotoba {
             .map(|d| if right { d.right(view.width - menu.by.right()) } else { d.left(menu.by.left()) })
             .on_mouse_down(MouseButton::Left, |_, window, cx| swallow_click(window, cx));
         let dark = theme.mode.is_dark();
+        let lit = if dark { theme.foreground.opacity(0.11) } else { theme.list_hover };
         for (ix, PickRow { key, name, rule }) in menu.rows.iter().enumerate() {
+            // More's list: each kind, with the key in use at the right of
+            // its own, and the mark of a list that opens beside it.
+            if let Some(group) = keys.then(|| KeyGroup::ALL[ix]) {
+                let open = self.key_group.is_some_and(|(g, _)| g == group);
+                let at = self.key_group_at.clone();
+                let quiet = theme.muted_foreground;
+                rows = rows.child(
+                    h_flex()
+                        .id(("pick-row", ix))
+                        .relative()
+                        .flex_shrink_0()
+                        .h(px(30.))
+                        .px(px(10.))
+                        .gap(px(10.))
+                        .items_center()
+                        .rounded(px(8.))
+                        .cursor_pointer()
+                        .when(open, |d| d.bg(lit))
+                        .hover(move |s| s.bg(lit))
+                        .when(!gone, |d| {
+                            d.on_hover(cx.listener(move |this, on: &bool, _, cx| {
+                                if *on {
+                                    this.open_key_group(group, cx);
+                                }
+                            }))
+                            .on_click(cx.listener(move |this, _, _, cx| this.open_key_group(group, cx)))
+                        })
+                        .child(div().text_size(px(13.)).font_weight(FontWeight::MEDIUM).child(name.clone()))
+                        .child(div().flex_1())
+                        .when(KeyGroup::of(&menu.current) == Some(group), |d| d.child(key_combo(&dictate_key_signs(&menu.current), quiet).text_size(px(13.)).text_color(quiet)))
+                        .child(Icon::default().path("icons/chevron-right.svg").with_size(px(12.)).text_color(quiet))
+                        .child(
+                            canvas(
+                                move |b, _, _| {
+                                    at.borrow_mut().insert(group, b);
+                                },
+                                |_, _, _, _| {},
+                            )
+                            .absolute()
+                            .inset_0(),
+                        ),
+                );
+                continue;
+            }
             let active = *key == menu.current && !key.is_empty();
             if *rule && ix > 0 {
                 rows = rows.child(div().flex_shrink_0().h(px(1.)).mx(px(6.)).my(px(3.)).bg(theme.border));
@@ -382,8 +454,7 @@ impl Kotoba {
                     .when(active, |d| d.bg(if dark { theme.foreground.opacity(0.06) } else { theme.muted }))
                     .hover(|s| s.bg(if dark { theme.foreground.opacity(0.11) } else { theme.list_hover }))
                     .when(!gone, |d| d.on_click(cx.listener(move |this, _, _, cx| this.pick_chosen(what, &key, cx))))
-                    // A key is drawn on its caps.
-                    .child(if keys { key_combo(name, theme.muted_foreground).text_size(px(13.)).font_weight(FontWeight::MEDIUM) } else { div().text_size(px(13.)).font_weight(FontWeight::MEDIUM).child(name.clone()) })
+                    .child(div().text_size(px(13.)).font_weight(FontWeight::MEDIUM).child(name.clone()))
                     .when(active, |d| d.child(div().flex_1()).child(Icon::new(IconName::Check).with_size(px(12.)).text_color(theme.primary))),
             );
         }
@@ -391,12 +462,118 @@ impl Kotoba {
         // Where it rests: its foot over the field, or its head under it.
         let rest = if up { view.height - menu.by.top() + gap } else { menu.by.bottom() + gap };
         let place = move |d: Stateful<Div>, off: Pixels| if up { d.bottom(rest - off) } else { d.top(rest - off) };
+        // On More's list, the open kind's keys beside it, and the kind
+        // open before going out.
+        let open_group = if keys { self.key_group.and_then(|(g, n)| self.render_key_group(g, n, &menu.current, gone, window, cx)) } else { None };
+        let gone_group = if keys && !gone { self.key_group_gone.and_then(|(g, n, at)| (at.elapsed() < MENU_OUT).then(|| self.render_key_group(g, n, &menu.current, true, window, cx)).flatten()) } else { None };
         if gone {
-            return card.with_animation(ElementId::Name(format!("pick-out-{}", menu.serial).into()), Animation::new(MENU_OUT), move |d, t| place(d, px(0.)).opacity(1. - t)).into_any_element();
+            let card = card.with_animation(ElementId::Name(format!("pick-out-{}", menu.serial).into()), Animation::new(MENU_OUT), move |d, t| place(d, px(0.)).opacity(1. - t));
+            return div().absolute().inset_0().child(card).children(open_group).into_any_element();
         }
         let card = card.with_animation(ElementId::Name(format!("pick-in-{}", menu.serial).into()), Animation::new(MENU_IN).with_easing(ease_out_quint()), move |d, t| place(d, px(6.) * (1. - t)).opacity(t));
         let shut = |this: &mut Self, _: &MouseDownEvent, _: &mut Window, cx: &mut Context<Self>| this.close_pick(cx);
-        div().id("pick-sheet").absolute().inset_0().occlude().on_mouse_down(MouseButton::Left, cx.listener(shut)).on_mouse_down(MouseButton::Right, cx.listener(shut)).child(card).into_any_element()
+        div().id("pick-sheet").absolute().inset_0().occlude().on_mouse_down(MouseButton::Left, cx.listener(shut)).on_mouse_down(MouseButton::Right, cx.listener(shut)).child(card).children(gone_group).children(open_group).into_any_element()
+    }
+
+    /// A kind's keys, in a list beside its row on More's: at the side
+    /// with room, its first key level with the row, coming in as a list
+    /// does, from the row's side. The modifiers are listed on their caps;
+    /// the F keys stand four to a row, as a keyboard groups them, with a
+    /// line under F12, where a Mac's own keys end.
+    fn render_key_group(&self, group: KeyGroup, serial: u32, current: &str, gone: bool, window: &Window, cx: &mut Context<Self>) -> Option<AnyElement> {
+        use kotoba_core::dictate;
+        let row = *self.key_group_at.borrow().get(&group)?;
+        let theme = cx.theme().clone();
+        let dark = theme.mode.is_dark();
+        let view = window.viewport_size();
+        let lit = if dark { theme.foreground.opacity(0.11) } else { theme.list_hover };
+        let chosen = if dark { theme.foreground.opacity(0.06) } else { theme.muted };
+        // The list's own edge is 6 from its rows; this one stands 4 off it.
+        let (inner, gap) = (px(6.), px(4.));
+        // About as wide and tall as it is drawn, to choose its side and
+        // keep it in the window.
+        let (wide, tall) = match group {
+            KeyGroup::One => (px(140.), px(5. * 32. + 10.)),
+            KeyGroup::Two => (px(140.), px(6. * 32. + 10.)),
+            KeyGroup::F => (px(206.), px(5. * 32. + 7. + 10.)),
+        };
+        let to_right = row.right() + inner + gap + wide <= view.width - px(8.);
+        let top = (row.top() - inner).min(view.height - px(12.) - tall).max(px(12.));
+        let body: AnyElement = match group {
+            KeyGroup::One | KeyGroup::Two => {
+                let mut list = v_flex().gap(px(2.));
+                for (ix, tap) in dictate::TAPS.iter().filter(|t| t.pair() == (group == KeyGroup::Two)).enumerate() {
+                    let full = format!("{}{}", dictate::TAP_PREFIX, tap.key);
+                    let active = full == current;
+                    list = list.child(
+                        h_flex()
+                            .id((SharedString::from(format!("key-group-{}", group.key())), ix))
+                            .h(px(30.))
+                            .px(px(10.))
+                            .gap(px(6.))
+                            .items_center()
+                            .rounded(px(8.))
+                            .cursor_pointer()
+                            .when(active, |d| d.bg(chosen))
+                            .hover(move |s| s.bg(lit))
+                            .when(!gone, |d| d.on_click(cx.listener(move |this, _: &ClickEvent, _, cx| this.pick_chosen(PickFor::DictateKey, &full, cx))))
+                            .child(key_combo(&crate::ui::tap_signs(tap), theme.muted_foreground).text_size(px(13.)).font_weight(FontWeight::MEDIUM))
+                            .when(active, |d| d.child(div().flex_1()).child(Icon::new(IconName::Check).with_size(px(12.)).text_color(theme.primary))),
+                    );
+                }
+                list.into_any_element()
+            }
+            KeyGroup::F => {
+                let mut grid = v_flex().gap(px(2.));
+                for line in 0..dictate::F_KEYS / 4 {
+                    if line == 3 {
+                        grid = grid.child(div().h(px(1.)).mx(px(6.)).my(px(3.)).bg(theme.border));
+                    }
+                    grid = grid.child(h_flex().gap(px(2.)).children((1..=4).map(|i| {
+                        let n = line * 4 + i;
+                        let full = format!("f{n}");
+                        let active = full == current;
+                        h_flex()
+                            .id(("key-group-f", n as usize))
+                            .w(px(47.))
+                            .h(px(30.))
+                            .justify_center()
+                            .items_center()
+                            .rounded(px(8.))
+                            .cursor_pointer()
+                            .text_size(px(13.))
+                            .font_weight(FontWeight::MEDIUM)
+                            .when(active, |d| d.bg(chosen).text_color(theme.primary))
+                            .hover(move |s| s.bg(lit))
+                            .when(!gone, |d| d.on_click(cx.listener(move |this, _: &ClickEvent, _, cx| this.pick_chosen(PickFor::DictateKey, &full, cx))))
+                            .child(format!("F{n}"))
+                    })));
+                }
+                grid.into_any_element()
+            }
+        };
+        let card = v_flex()
+            .id(("key-group", serial as usize))
+            .absolute()
+            .top(top)
+            .min_w(px(120.))
+            .p(px(5.))
+            .rounded(px(12.))
+            .bg(theme.popover)
+            .border_1()
+            .border_color(theme.border)
+            .shadow(float_shadow(&theme))
+            .on_mouse_down(MouseButton::Left, |_, window, cx| swallow_click(window, cx))
+            .child(body);
+        // Beside the list: from its right edge, or to its left.
+        let (from_left, from_right) = (row.right() + inner + gap, view.width - (row.left() - inner) + gap);
+        let place = move |d: Stateful<Div>, off: Pixels| if to_right { d.left(from_left - off) } else { d.right(from_right - off) };
+        let id = ElementId::Name(format!("key-group-{}-{serial}", if gone { "out" } else { "in" }).into());
+        Some(if gone {
+            card.with_animation(id, Animation::new(MENU_OUT), move |d, t| place(d, px(0.)).opacity(1. - t)).into_any_element()
+        } else {
+            card.with_animation(id, Animation::new(MENU_IN).with_easing(ease_out_quint()), move |d, t| place(d, px(6.) * (1. - t)).opacity(t)).into_any_element()
+        })
     }
 
     /// How something small stands at this draw, asked at every draw

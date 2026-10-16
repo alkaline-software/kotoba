@@ -41,6 +41,9 @@ window and permission parts of `kotoba.rs`, and the menu bar item in
 - A hover style that changes the text's colour is set whatever state the
   element is in, never under a `when`.
 - Permissions are asked when the person presses Allow, never on a timer.
+- One Kotoba runs at a time: the one opened last ends the others at
+  launch (`sys::end_other_kotobas`), by asking them to quit, so their
+  models are let go, and making them a few seconds on.
 - A menu item with an image sets `preferredImageVisibility` to visible,
   or on macOS 27 the image is not drawn.
 
@@ -87,8 +90,8 @@ scrolls, under the top, for what a fold opens or what is added later.
 `card`, `line`), drawn to `docs/design.md`, which has the sizes.
 
 - **General** is three groups. Dictation: Shortcut (the key, More and
-  Reset; what is said of the key and Fn's guide fold open under the row,
-  across the card) and History (how long, and Show History). App: Theme,
+  Reset; what is said of the key and the guide for Fn or F1 to F12 fold
+  open under the row, across the card) and History (how long, and Show History). App: Theme,
   Launch at login, Show in menu bar and Swap clicks. Permissions:
   Microphone and Accessibility, asked here ahead of the first dictation,
   so it does not stop to ask then. Each says whether it is given, and the
@@ -123,6 +126,17 @@ scrolls, under the top, for what a fold opens or what is added later.
   page, were both tried: the page changed length as it was used.
 - **Updates** is one card: the version, with what a check found and its
   button, and Check automatically. **About** is Emaki's title card.
+
+**More** drops a list of the kinds of key dictation can be pressed
+alone (`KeyGroup`): One Modifier, Two Modifiers and F Keys, the key in
+use shown at the right of its kind. Pointed at or pressed, a kind opens
+its keys in a list beside, as a Mac's submenu does (`render_key_group`):
+at the side with room, its first key level with the kind's row, and the
+kind open before going out as the next comes in. The modifiers are on
+their caps; the F keys stand four to a row, as a keyboard groups them,
+with a line under F12, where a Mac's own keys end. The kinds' rows are
+measured as they are drawn (`key_group_at`) for where the list beside
+stands.
 
 A notice (something refused, a model to download first) opens down from
 the section's title and closes after a while (`say`, `say_error`).

@@ -134,14 +134,59 @@
     "de": "Mehr",
     "es": "Más"
   },
-  "Modifier keys tapped alone": {
-    "zh-Hans": "单独轻按修饰键",
-    "zh-Hant": "單獨輕按輔助鍵",
-    "ja": "修飾キーだけを押す",
-    "ko": "보조 키만 누르기",
-    "fr": "Touches de modification seules",
-    "de": "Nur Sondertasten tippen",
-    "es": "Solo teclas modificadoras"
+  "Modifier keys and F keys": {
+    "zh-Hans": "修饰键与 F 键",
+    "zh-Hant": "輔助鍵與 F 鍵",
+    "ja": "修飾キーと F キー",
+    "ko": "보조 키와 F 키",
+    "fr": "Touches de modification et touches F",
+    "de": "Sondertasten und F-Tasten",
+    "es": "Teclas modificadoras y teclas F"
+  },
+  "One Modifier": {
+    "zh-Hans": "单个修饰键",
+    "zh-Hant": "單一輔助鍵",
+    "ja": "修飾キー 1 つ",
+    "ko": "보조 키 하나",
+    "fr": "Une touche de modification",
+    "de": "Eine Sondertaste",
+    "es": "Una tecla modificadora"
+  },
+  "Two Modifiers": {
+    "zh-Hans": "两个修饰键",
+    "zh-Hant": "兩個輔助鍵",
+    "ja": "修飾キー 2 つ",
+    "ko": "보조 키 두 개",
+    "fr": "Deux touches de modification",
+    "de": "Zwei Sondertasten",
+    "es": "Dos teclas modificadoras"
+  },
+  "F Keys": {
+    "zh-Hans": "F 键",
+    "zh-Hant": "F 鍵",
+    "ja": "F キー",
+    "ko": "F 키",
+    "fr": "Touches F",
+    "de": "F-Tasten",
+    "es": "Teclas F"
+  },
+  "On Apple keyboards, {key} does what is printed on it unless Fn 🌐 is held.": {
+    "zh-Hans": "在 Apple 键盘上，除非按住 Fn 🌐，{key} 会执行键上印的功能。",
+    "zh-Hant": "在 Apple 鍵盤上，除非按住 Fn 🌐，{key} 會執行鍵上印的功能。",
+    "ja": "Apple のキーボードでは、Fn 🌐 を押さない限り、{key} はキーに印字された機能になります。",
+    "ko": "Apple 키보드에서는 Fn 🌐 키를 누르지 않으면 {key} 키가 키에 표시된 기능을 합니다.",
+    "fr": "Sur les claviers Apple, {key} fait ce qui est imprimé sur la touche, sauf si Fn 🌐 est maintenue.",
+    "de": "Auf Apple-Tastaturen tut {key}, was auf der Taste steht, außer Fn 🌐 wird gehalten.",
+    "es": "En los teclados de Apple, {key} hace lo que indica la tecla, salvo que mantengas Fn 🌐."
+  },
+  "Or turn on “Use F1, F2, etc. keys as standard function keys” in Keyboard Shortcuts.": {
+    "zh-Hans": "或在“键盘快捷键”中打开“将 F1、F2 等键用作标准功能键”。",
+    "zh-Hant": "或在「鍵盤快速鍵」中開啟「將 F1、F2 等鍵用作標準功能鍵」。",
+    "ja": "または「キーボードショートカット」で「F1、F2 などのキーを標準のファンクションキーとして使用」をオンにしてください。",
+    "ko": "또는 ‘키보드 단축키’에서 ‘F1, F2 등의 키를 표준 기능 키로 사용’을 켜세요.",
+    "fr": "Ou activez « Utiliser les touches F1, F2, etc. comme des touches de fonction standard » dans Raccourcis clavier.",
+    "de": "Oder aktiviere „F1, F2 usw. als Standard-Funktionstasten verwenden“ in den Tastaturkurzbefehlen.",
+    "es": "O activa «Usar las teclas F1, F2, etc. como teclas de función estándar» en Funciones rápidas de teclado."
   },
   "Reset": {
     "zh-Hans": "重置",

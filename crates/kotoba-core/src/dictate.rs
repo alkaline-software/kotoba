@@ -878,6 +878,19 @@ pub fn tap(key: &str) -> Option<&'static Tap> {
     TAPS.iter().find(|t| t.key == key)
 }
 
+/// The F keys a dictation key can be pressed alone: as many as the Mac
+/// has codes for. A binding of one of them alone is `f1` to `f20`.
+pub const F_KEYS: u8 = 20;
+
+/// The F key a dictation key is alone (`f13` is 13), when it is one.
+pub fn f_key(key: &str) -> Option<u8> {
+    let n = key.strip_prefix('f')?;
+    if n.starts_with('0') {
+        return None;
+    }
+    n.parse().ok().filter(|n| (1..=F_KEYS).contains(n))
+}
+
 fn kinds_of(held: u16) -> u8 {
     let mut kinds = 0;
     for (keys, kind) in [(L_CTRL | R_CTRL, CTRL), (L_ALT | R_ALT, ALT), (L_SHIFT | R_SHIFT, SHIFT), (L_CMD | R_CMD, CMD), (FN, FN_KIND)] {

@@ -77,6 +77,66 @@ pub fn fn_key_use() -> Option<&'static str> {
 /// Mac's, so the guidance can be seen without touching Keyboard settings.
 pub static FN_USE_PROBE: std::sync::atomic::AtomicI32 = std::sync::atomic::AtomicI32::new(-1);
 
+/// Whether F1 to F12 on an Apple keyboard are standard function keys
+/// ("Use F1, F2, etc. keys as standard function keys", in Keyboard
+/// Shortcuts, Function Keys). Off, which a Mac that never had it set
+/// is, each does what is printed on it, and is an F key only with Fn
+/// held. Asks `defaults`, so off the main thread.
+#[cfg(target_os = "macos")]
+pub fn f_keys_standard() -> bool {
+    let probe = F_STATE_PROBE.load(std::sync::atomic::Ordering::Relaxed);
+    if probe >= 0 {
+        return probe == 1;
+    }
+    std::process::Command::new("defaults").args(["read", "-g", "com.apple.keyboard.fnState"]).output().is_ok_and(|out| String::from_utf8_lossy(&out.stdout).trim() == "1")
+}
+/// Elsewhere F keys are F keys.
+#[cfg(not(target_os = "macos"))]
+pub fn f_keys_standard() -> bool {
+    true
+}
+
+/// `KOTOBA_GO=fstate:<0|1>`: the value `f_keys_standard` reads in place
+/// of the Mac's.
+pub static F_STATE_PROBE: std::sync::atomic::AtomicI32 = std::sync::atomic::AtomicI32::new(-1);
+
+/// Every other Kotoba running as an app, the release's or the build's,
+/// asked to quit, and made to if it is still there a few seconds on: two
+/// would each take dictation's key and write everything twice. The one
+/// opened last stays.
+#[cfg(target_os = "macos")]
+pub fn end_other_kotobas() {
+    use objc2_app_kit::NSRunningApplication;
+    use objc2_foundation::NSString;
+    let me = std::process::id() as i32;
+    let mut others = Vec::new();
+    for id in ["com.pingfanhu.kotoba", "com.pingfanhu.kotoba.dev"] {
+        for app in NSRunningApplication::runningApplicationsWithBundleIdentifier(&NSString::from_str(id)).iter() {
+            let pid = app.processIdentifier();
+            if pid != me && pid > 0 {
+                // Its quit lets its models go (`on_app_quit`).
+                app.terminate();
+                others.push(pid);
+            }
+        }
+    }
+    if others.is_empty() {
+        return;
+    }
+    std::thread::spawn(move || {
+        std::thread::sleep(std::time::Duration::from_secs(3));
+        for pid in others {
+            if let Some(app) = NSRunningApplication::runningApplicationWithProcessIdentifier(pid) {
+                if !app.isTerminated() {
+                    app.forceTerminate();
+                }
+            }
+        }
+    });
+}
+#[cfg(not(target_os = "macos"))]
+pub fn end_other_kotobas() {}
+
 /// Keyboard settings in System Settings, where Fn's use is set.
 pub const KEYBOARD_SETTINGS_URL: &str = "x-apple.systempreferences:com.apple.Keyboard-Settings.extension";
 
@@ -466,7 +526,7 @@ pub fn take_escape(_on: bool) {}
 fn key_code(key: &str) -> Option<u16> {
     const LETTERS: [u16; 26] = [0, 11, 8, 2, 14, 3, 5, 4, 34, 38, 40, 37, 46, 45, 31, 35, 12, 15, 1, 17, 32, 9, 13, 7, 16, 6];
     const DIGITS: [u16; 10] = [29, 18, 19, 20, 21, 23, 22, 26, 28, 25];
-    const F: [u16; 12] = [122, 120, 99, 118, 96, 97, 98, 100, 101, 109, 103, 111];
+    const F: [u16; 20] = [122, 120, 99, 118, 96, 97, 98, 100, 101, 109, 103, 111, 105, 107, 113, 106, 64, 79, 80, 90];
     let mut chars = key.chars();
     if let (Some(c), None) = (chars.next(), chars.next()) {
         if c.is_ascii_lowercase() {
@@ -476,8 +536,8 @@ fn key_code(key: &str) -> Option<u16> {
             return Some(DIGITS[(c as u8 - b'0') as usize]);
         }
     }
-    if let Some(n) = key.strip_prefix('f').and_then(|n| n.parse::<usize>().ok()).filter(|n| (1..=12).contains(n)) {
-        return Some(F[n - 1]);
+    if let Some(n) = kotoba_core::dictate::f_key(key) {
+        return Some(F[n as usize - 1]);
     }
     Some(match key {
         "space" => 49,

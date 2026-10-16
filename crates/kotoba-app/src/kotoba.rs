@@ -118,13 +118,60 @@ impl Lane {
 /// Which list a field opens.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum PickFor {
-    /// Dictation's key as modifiers tapped alone, which no key pressed in
-    /// its field can be: the More beside it.
+    /// Dictation's key as a key pressed alone, chosen by its kind
+    /// (`KeyGroup`): the More beside its field.
     DictateKey,
     /// How long dictation's history keeps what it wrote.
     DictateKeep,
     /// The window's language, at General's top.
     Language,
+}
+
+/// Whether the Mac may do something else with dictation's key, said
+/// under its row: Fn, which can have a job of its own, and F1 to F12,
+/// which on an Apple keyboard do what is printed on them unless Fn is
+/// held. F13 to F20 have no other use.
+pub fn key_has_use(key: &str) -> bool {
+    dictate::tap(key).is_some_and(|t| t.key == "fn") || dictate::f_key(key).is_some_and(|n| n <= 12)
+}
+
+/// The kinds of key More offers for dictation, each a list of its own
+/// beside More's: one modifier tapped alone, two tapped together, or an
+/// F key.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum KeyGroup {
+    One,
+    Two,
+    F,
+}
+
+impl KeyGroup {
+    pub const ALL: [KeyGroup; 3] = [KeyGroup::One, KeyGroup::Two, KeyGroup::F];
+
+    /// The kind a dictation key is, when More has it.
+    pub fn of(key: &str) -> Option<KeyGroup> {
+        match dictate::tap(key) {
+            Some(tap) if tap.pair() => Some(KeyGroup::Two),
+            Some(_) => Some(KeyGroup::One),
+            None => dictate::f_key(key).map(|_| KeyGroup::F),
+        }
+    }
+
+    pub fn name(self) -> &'static str {
+        match self {
+            KeyGroup::One => t("One Modifier"),
+            KeyGroup::Two => t("Two Modifiers"),
+            KeyGroup::F => t("F Keys"),
+        }
+    }
+
+    pub fn key(self) -> &'static str {
+        match self {
+            KeyGroup::One => "one",
+            KeyGroup::Two => "two",
+            KeyGroup::F => "f",
+        }
+    }
 }
 
 /// A field's list while it is open: every choice, the current one ticked,
@@ -241,16 +288,24 @@ pub struct Kotoba {
     pub dictate_key_note: Option<String>,
     pub dictate_key_focus: FocusHandle,
     /// What the notes under the key's row last said, drawn as they close.
-    pub dictate_kept: RefCell<(String, &'static str)>,
-    /// What the Mac does with Fn, once asked: None for nothing.
-    pub fn_use: Option<Option<&'static str>>,
-    fn_reads: u32,
+    pub dictate_kept: RefCell<(String, &'static str, String)>,
+    /// What the Mac does with dictation's key besides, once asked (Fn's
+    /// job, or `printed` for F1 to F12 doing what is printed on them):
+    /// None for nothing.
+    pub key_use: Option<Option<&'static str>>,
+    key_reads: u32,
 
     // Lists that drop down.
     pub pick: Option<PickMenu>,
     pub pick_gone: Option<(PickMenu, Instant)>,
     pub pick_serial: u32,
     pub pill_at: Rc<RefCell<HashMap<PickFor, Bounds<Pixels>>>>,
+    /// More's list of kinds: the one whose keys are open beside it, by
+    /// the change's number (for its motion), the one going, and where
+    /// each kind's row was drawn last.
+    pub key_group: Option<(KeyGroup, u32)>,
+    pub key_group_gone: Option<(KeyGroup, u32, Instant)>,
+    pub key_group_at: Rc<RefCell<HashMap<KeyGroup, Bounds<Pixels>>>>,
 
     // The sheets over the settings.
     pub dictated: Option<(Rc<Vec<dictate::Said>>, u32)>,
@@ -378,13 +433,16 @@ impl Kotoba {
             dictate_key_rec: false,
             dictate_key_note: None,
             dictate_key_focus: cx.focus_handle(),
-            dictate_kept: RefCell::new((String::new(), "")),
-            fn_use: None,
-            fn_reads: 0,
+            dictate_kept: RefCell::new((String::new(), "", String::new())),
+            key_use: None,
+            key_reads: 0,
             pick: None,
             pick_gone: None,
             pick_serial: 0,
             pill_at: Rc::new(RefCell::new(HashMap::new())),
+            key_group: None,
+            key_group_gone: None,
+            key_group_at: Rc::new(RefCell::new(HashMap::new())),
             dictated: None,
             dictated_gone: None,
             dictated_serial: 0,
@@ -410,7 +468,7 @@ impl Kotoba {
             update,
         };
         k.send_outside_key();
-        k.read_fn_use(cx);
+        k.read_key_use(cx);
         k
     }
 
@@ -495,7 +553,7 @@ impl Kotoba {
             // Back from Keyboard settings, Fn's use may have changed; back
             // from Privacy & Security, a permission may have.
             if this.window_active {
-                this.read_fn_use(cx);
+                this.read_key_use(cx);
                 this.mic = crate::sys::mic();
                 this.login = crate::sys::login();
                 #[cfg(target_os = "macos")]
@@ -1123,7 +1181,9 @@ impl Kotoba {
         if matches!(key, "shift" | "control" | "alt" | "platform" | "function" | "cmd" | "") {
             return;
         }
-        if !(m.platform || m.alt) || m.control || m.function {
+        // An F key may be pressed alone; any other key wants ⌘ or ⌥.
+        let f = dictate::f_key(key).is_some();
+        if (!f && !(m.platform || m.alt)) || m.control || m.function {
             self.dictate_key_note = Some(if cfg!(target_os = "macos") { t("With ⌘ or ⌥.") } else { t("With Ctrl or Alt.") }.into());
             cx.notify();
             return;
@@ -1159,6 +1219,8 @@ impl Kotoba {
         self.dictate_key_note = None;
         self.tap_watch.reset();
         if self.cfg.app.dictate_key != key {
+            // What the Mac does with the old key says nothing of the new.
+            self.key_use = None;
             let old = std::mem::replace(&mut self.cfg.app.dictate_key, key.clone());
             crate::move_dictate_key(&old, &key, cx);
             if let Err(e) = Config::edit(move |c| c.app.dictate_key = key) {
@@ -1166,32 +1228,42 @@ impl Kotoba {
             }
             self.send_outside_key();
         }
-        self.read_fn_use(cx);
+        self.read_key_use(cx);
         cx.notify();
     }
 
-    /// With Fn as dictation's key, ask what the Mac does with it too, for
-    /// the guidance under the key's row. Asked again each time the
-    /// window comes back, so it goes once the person has set Do Nothing.
-    pub fn read_fn_use(&mut self, cx: &mut Context<Self>) {
-        if !dictate::tap(&self.cfg.app.dictate_key).is_some_and(|t| t.key == "fn") {
+    /// With Fn or one of F1 to F12 as dictation's key, ask what the Mac
+    /// does with it too, for the guidance under the key's row. Asked
+    /// again each time the window comes back, so it goes once the person
+    /// has changed it in Keyboard settings.
+    pub fn read_key_use(&mut self, cx: &mut Context<Self>) {
+        let key = self.cfg.app.dictate_key.clone();
+        if !key_has_use(&key) {
             return;
         }
-        self.fn_reads += 1;
-        let n = self.fn_reads;
+        self.key_reads += 1;
+        let n = self.key_reads;
         cx.spawn(async move |this, cx| {
-            let job = cx.background_spawn(async { crate::sys::fn_key_use() }).await;
+            let job = cx
+                .background_spawn(async move {
+                    if dictate::f_key(&key).is_some() {
+                        (!crate::sys::f_keys_standard()).then_some("printed")
+                    } else {
+                        crate::sys::fn_key_use()
+                    }
+                })
+                .await;
             let _ = this.update(cx, |this, cx| {
-                if this.fn_reads != n || this.fn_use == Some(job) {
+                if this.key_reads != n || this.key_use == Some(job) {
                     return;
                 }
                 // Coming up under the key's row while the settings show it:
                 // the settings slide down to it as it opens.
-                if job.is_some() && this.fn_use.flatten().is_none() && this.window.is_some() && this.section == "general" {
+                if job.is_some() && this.key_use.flatten().is_none() && this.window.is_some() && this.section == "general" {
                     let now = Instant::now();
                     this.settings_glide.set(Some((now, now)));
                 }
-                this.fn_use = Some(job);
+                this.key_use = Some(job);
                 cx.notify();
             });
         })
@@ -1615,6 +1687,11 @@ impl Kotoba {
             }
             "avoid" => self.open_words(WordList::Avoid, window, cx),
             "pick:dictate-key" => self.pick_toggle(PickFor::DictateKey, cx),
+            s if s.starts_with("group:") => {
+                if let Some(g) = KeyGroup::ALL.into_iter().find(|g| g.key() == &s["group:".len()..]) {
+                    self.open_key_group(g, cx);
+                }
+            }
             "pick:dictate-keep" => self.pick_toggle(PickFor::DictateKeep, cx),
             "pick:language" => self.pick_toggle(PickFor::Language, cx),
             "dark" => self.set_appearance("dark", window, cx),
@@ -1665,9 +1742,13 @@ impl Kotoba {
             // The first word of a list taken out: `unword:terms`.
             s if s.starts_with("unword:") => self.remove_word(if s.ends_with("avoid") { WordList::Avoid } else { WordList::Terms }, 0, cx),
             s if s.starts_with("notice:") => self.say(s["notice:".len()..].replace('_', " "), cx),
+            s if s.starts_with("fstate:") => {
+                crate::sys::F_STATE_PROBE.store(s["fstate:".len()..].parse().unwrap_or(-1), Ordering::Relaxed);
+                self.read_key_use(cx);
+            }
             s if s.starts_with("fnuse:") => {
                 crate::sys::FN_USE_PROBE.store(s["fnuse:".len()..].parse().unwrap_or(-1), Ordering::Relaxed);
-                self.read_fn_use(cx);
+                self.read_key_use(cx);
             }
             s if s.starts_with("dictatekey:") => self.set_dictate_key(s["dictatekey:".len()..].to_string(), cx),
             // A 16-bit WAV file written down as the microphone's recording

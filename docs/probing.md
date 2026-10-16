@@ -6,7 +6,9 @@ How to look at a state of the window from a script.
 
 - Probe with a copy that has its own `KOTOBA_HOME` at a scratch folder.
   Link `models` there to `~/.kotoba/models` to use the models already
-  downloaded.
+  downloaded. With a home of its own it leaves the person's Kotoba
+  running (`sys::end_other_kotobas`); a Kotoba opened without one ends
+  every other, a probe copy run as the dev bundle too.
 - A copy run with `KOTOBA_GO` or `KOTOBA_SHOT` keeps its window over
   every other app's (`sys::keep_on_top`): a covered window draws nothing
   and runs no step, and macOS no longer lets a background app step in
@@ -44,6 +46,9 @@ capture its own window without Screen Recording access.
   added, as Enter does (a comma for a space). `unword:<terms|avoid>`:
   the list's first word taken out.
 - `pick:dictate-key`, `pick:dictate-keep`: the lists that drop down.
+  `group:<one|two|f>`: on More's list, a kind's keys opened beside it.
+- `fstate:<0|1>`: F1 to F12 read as doing what is printed on them (0)
+  or as standard function keys (1), in place of the Mac's setting.
 - `get`: the lightest speech model not here, downloaded.
   `clean:<on|off>`: post-processing turned on or off.
 - `dark`, `light`: the appearance. `section:<key>`: another section.

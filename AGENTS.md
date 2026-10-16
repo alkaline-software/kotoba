@@ -143,8 +143,10 @@ with the developer's identity, so the microphone and Accessibility given
 to it outlive a rebuild. The release (`com.pingfanhu.kotoba`) is a
 separate entry in Privacy & Security, given on its own.
 
-**One Kotoba at a time**, except a probe copy with its own `KOTOBA_HOME`
-(`docs/probing.md`). After a change to the app, build it and run
+**One Kotoba at a time.** A Kotoba opened while another runs, the
+release or the build, asks the other to quit and makes it a few seconds
+on (`sys::end_other_kotobas`): two would each take dictation's key. A
+probe copy, with its own `KOTOBA_HOME`, ends none (`docs/probing.md`). After a change to the app, build it and run
 `scripts/relaunch.sh` as the last command.
 
 ## Writing things down
