@@ -5,6 +5,13 @@ GitHub Release as its notes. Write it for the person installing the app, and
 keep it short: one line per change, a dozen lines at most, small fixes
 grouped into one. The reasoning belongs in AGENTS.md and docs/.
 
+## v0.1.3
+
+- Choose the microphone dictation listens to, in General, Input. It follows your Mac's input unless you pick one.
+- A microphone on an audio interface, or a quiet one, is heard: the voice is no longer taken at a fraction of its loudness, and soft last words are no longer cut off.
+- The start and stop chimes are quieter.
+- Words dictated with no place to go in Kotoba's own window go to the clipboard without a notice pushing the settings down.
+
 ## v0.1.2
 
 - F1 to F20 can be the shortcut on their own: press one in the shortcut field, or choose it under More. A note says when F1 to F12 on an Apple keyboard do what is printed on them instead.
