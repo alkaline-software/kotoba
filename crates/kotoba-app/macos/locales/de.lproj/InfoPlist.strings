@@ -1,0 +1,2 @@
+/* The line the system shows when it asks for the microphone. */
+"NSMicrophoneUsageDescription" = "Kotoba hört zu, während du diktierst. Was du sagst, wird auf diesem Mac zu Text und nirgendwohin gesendet.";

@@ -1,0 +1,2 @@
+/* The line the system shows when it asks for the microphone. */
+"NSMicrophoneUsageDescription" = "Kotoba 在你聽寫時聆聽。你說的話會在這台 Mac 上變成文字，不會傳送到任何地方。";

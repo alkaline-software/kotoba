@@ -1,0 +1,615 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Kotoba App Icon</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    width: 1280px; padding: 40px;
+    background: #f3f2f0; color: #1c1c1e;
+    font-family: -apple-system, "SF Pro Text", "Helvetica Neue", sans-serif;
+  }
+  h1 { font-size: 22px; font-weight: 700; margin-bottom: 24px; }
+  .card {
+    background: #fff; border: 1px solid #e4e2de; border-radius: 16px;
+    padding: 36px 44px; margin-bottom: 22px;
+    display: flex; align-items: center; gap: 56px;
+  }
+  .card h2 { font-size: 18px; font-weight: 700; margin-bottom: 14px; }
+  .card p { font-size: 14px; color: #5c5c62; margin-bottom: 22px; line-height: 1.5; max-width: 760px; }
+  .sizes { display: flex; align-items: flex-end; gap: 30px; }
+  .sizes figure { display: flex; flex-direction: column; align-items: center; gap: 12px; }
+  .sizes figcaption { font-size: 12px; color: #5c5c62; }
+  .sizes .gap { width: 16px; }
+  canvas { display: block; }
+  .zoom { image-rendering: pixelated; }
+  .usage { align-items: center; }
+  .usage .label { width: 300px; flex: none; }
+  .usage .label h2 { margin-bottom: 10px; }
+  .usage .label p { margin: 0; }
+  .bars { display: flex; flex-direction: column; gap: 16px; }
+  .bar { display: flex; gap: 20px; padding: 22px 24px; border-radius: 18px; }
+  .bar.dark { background: #1f2024; color: #f2f2f4; }
+  .bar.light { background: #eceae6; border: 1px solid #dcd9d3; }
+  .org { display: flex; align-items: center; gap: 12px; font-size: 14px; font-weight: 600; }
+  .org canvas { border-radius: 8px; }
+  .org canvas.template { border-radius: 0; margin-left: 24px; }
+  .bar.dark canvas.template { filter: invert(1); }
+</style>
+</head>
+<body>
+<h1>Kotoba App Icon</h1>
+<div id="cards"></div>
+<div class="card usage">
+  <div class="label">
+    <h2>Beside its name</h2>
+    <p>Drawn at 48 px as a full square. The host rounds the corners. At the end, the menu bar's template image at 18 pt, tinted as the system tints it.</p>
+  </div>
+  <div class="bars">
+    <div class="bar dark" id="bar-dark"></div>
+    <div class="bar light" id="bar-light"></div>
+  </div>
+</div>
+
+<script>
+// The icon is drawn in a 100-unit box. `bleed` fills the whole canvas as a
+// square; otherwise the body is an inset squircle with a shadow (the app icon).
+const NAVY = '#2b2556', AMBER = '#ffb83e', VIOLET = '#6a3fd9', GREEN = '#8cc992';
+
+const stroke = (ctx, pts, style, width, cap = 'round') => {
+  ctx.strokeStyle = style; ctx.lineWidth = width; ctx.lineCap = cap; ctx.lineJoin = 'round';
+  ctx.beginPath();
+  for (const [x, y] of pts) ctx.lineTo(x, y);
+  ctx.stroke();
+};
+
+// The leaf, set at 45 degrees and drawn from three arcs. In its own frame
+// the base is at (-L, 0) and the tip at (L, 0). One edge is an arc that
+// rises WU off that line, the other one that falls WL off it, and the
+// midrib an arc that falls MID, halfway between them, so the leaf bends as
+// one piece and is as wide on either side of its midrib. The stalk is the
+// midrib's arc carried on past the base, so it curls back like the tail of
+// a speech bubble. The frame is turned by TILT and placed at (CX, CY).
+const CX = 53, CY = 48, TILT = -Math.PI / 4, L = 37, WU = 12, WL = 30, STALK = 13;
+const MID = (WL - WU) / 2;
+
+// the circle of the arc through (-L, 0) and (L, 0) that leaves the line by
+// s, downward when s is positive: its centre's y and its radius
+function circle(s) {
+  const r = (L * L + s * s) / (2 * Math.abs(s));
+  return { c: s > 0 ? s - r : s + r, r };
+}
+const UP = circle(-WU), DOWN = circle(WL), RIB = circle(MID);
+const TIP = Math.atan2(-RIB.c, L), BASE = Math.atan2(-RIB.c, -L);  // on the midrib's circle
+const rib = t => [RIB.r * Math.cos(t), RIB.c + RIB.r * Math.sin(t)];
+
+function frame(ctx) { ctx.translate(CX, CY); ctx.rotate(TILT); }
+
+function leafPath(ctx) {
+  ctx.beginPath();
+  ctx.arc(0, UP.c, UP.r, Math.atan2(-UP.c, -L), Math.atan2(-UP.c, L));
+  ctx.arc(0, DOWN.c, DOWN.r, Math.atan2(-DOWN.c, L), Math.atan2(-DOWN.c, -L));
+  ctx.closePath();
+}
+
+const RIB_LENGTH = (BASE - TIP) * RIB.r;
+// the stretch of the midrib's circle from d0 to d1, measured along it from
+// the base toward the tip (below 0 is past the base, on the stalk)
+function strokeRib(ctx, d0, d1, style, width) {
+  ctx.strokeStyle = style; ctx.lineWidth = width; ctx.lineCap = 'round';
+  ctx.beginPath(); ctx.arc(0, RIB.c, RIB.r, BASE - d1 / RIB.r, BASE - d0 / RIB.r); ctx.stroke();
+}
+
+// The leaf stroked at twice the line's width, then filled, so the fill
+// covers the inner half of the line. The stalk starts inside the leaf so
+// the fill hides its end. The tip is mitred to a point.
+function leaf(ctx) {
+  ctx.save(); frame(ctx);
+  strokeRib(ctx, -STALK, 4, NAVY, 4.5);
+  ctx.strokeStyle = NAVY; ctx.lineWidth = 5.2; ctx.lineJoin = 'miter';
+  leafPath(ctx); ctx.stroke();
+  ctx.fillStyle = GREEN; leafPath(ctx); ctx.fill();
+  ctx.restore();
+}
+
+// whether a point of the frame is inside the leaf: inside both circles
+const inLeaf = (x, y) => Math.hypot(x, y - UP.c) <= UP.r && Math.hypot(x, y - DOWN.c) <= DOWN.r;
+// how far the leaf runs from (x, y) in the direction (dx, dy)
+function room(x, y, dx, dy) {
+  let t = 0;
+  while (inLeaf(x + dx * (t + 0.1), y + dy * (t + 0.1))) t += 0.1;
+  return t;
+}
+
+// The veins: the bars of a sound wave, crossing the midrib at even steps
+// along it, each on a radius of its circle, so they fan with the leaf's
+// bend. Each takes a share of the room there, which swells to the amber
+// bar in the middle and falls away, as a voice does.
+const STEP = 8, SHARE = [0.38, 0.62, 0.86, 1, 0.86, 0.62, 0.38];
+function wave(ctx) {
+  // Below 48 px across, bars on a slant blur together: the midrib is drawn
+  // in amber instead.
+  const small = ctx.getTransform().a * 100 < 48;
+  ctx.save(); frame(ctx);
+  if (small) {
+    strokeRib(ctx, 7, RIB_LENGTH - 9, AMBER, 4.5);
+  } else {
+    SHARE.forEach((share, i) => {
+      const t = Math.PI / 2 + (i - 3) * STEP / RIB.r, [x, y] = rib(t);
+      const dx = Math.cos(t), dy = Math.sin(t);
+      const h = (Math.min(room(x, y, dx, dy), room(x, y, -dx, -dy)) - 5) * share;
+      stroke(ctx, [[x - dx * h, y - dy * h], [x + dx * h, y + dy * h]], i === 3 ? AMBER : NAVY, 4.5);
+    });
+  }
+  ctx.restore();
+}
+
+// The menu bar's template image: the leaf and its stalk as one black
+// silhouette with the midrib cut out of it, on a transparent square. The
+// system tints it for the bar, so only its alpha counts. The leaf is
+// scaled to fill the square.
+function drawTemplate(canvas, px) {
+  canvas.width = px; canvas.height = px;
+  const ctx = canvas.getContext('2d');
+  ctx.scale(px / 100, px / 100);
+  ctx.translate(50, 50); ctx.scale(1.26, 1.26); ctx.translate(-49.7, -51.1);
+  frame(ctx);
+  ctx.fillStyle = ctx.strokeStyle = '#000'; ctx.lineWidth = 3; ctx.lineJoin = 'miter';
+  leafPath(ctx); ctx.fill(); ctx.stroke();
+  strokeRib(ctx, -STALK, 4, '#000', 5.5);
+  ctx.globalCompositeOperation = 'destination-out';
+  strokeRib(ctx, 8, RIB_LENGTH - 10, '#000', 5.5);
+}
+
+const ICONS = [
+  {
+    id: 'kotoba', name: 'Leaf of words',
+    desc: 'Kotoba, 言葉, is written "say" and "leaf". The icon is a leaf set at 45 degrees and drawn from three arcs: its two edges and a midrib halfway between them, so the leaf bends as one piece. The stalk carries the midrib\'s arc on past the base and curls back like the tail of a speech bubble. Its veins are the bars of a sound wave, at even steps along the midrib and square to it, swelling to the amber bar in the middle and falling away as a voice does. At 32 px and below the bars would blur together, so the midrib is drawn in amber instead. The spark is the small model on this Mac that tidies what was said. The ground and the line colours are those of the Alkaline Software icon, as in Emaki; the green of the leaf is Kotoba\'s accent, where Emaki has terracotta.',
+    bg: ['#fdf8ee', '#f1e4d0'],   // top left to bottom right
+    glyph(ctx) {
+      leaf(ctx);
+      wave(ctx);
+      ctx.fillStyle = VIOLET; sparkle(ctx, 22, 25, 5.5); ctx.fill();
+    }
+  }
+];
+
+// four-point AI spark centred on (cx, cy)
+function sparkle(ctx, cx, cy, r) {
+  const k = r * 0.2;
+  ctx.beginPath();
+  ctx.moveTo(cx, cy - r);
+  ctx.quadraticCurveTo(cx + k, cy - k, cx + r, cy);
+  ctx.quadraticCurveTo(cx + k, cy + k, cx, cy + r);
+  ctx.quadraticCurveTo(cx - k, cy + k, cx - r, cy);
+  ctx.quadraticCurveTo(cx - k, cy - k, cx, cy - r);
+  ctx.closePath();
+}
+
+function rr(ctx, x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + w, y, x + w, y + h, r);
+  ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r);
+  ctx.arcTo(x, y, x + w, y, r);
+  ctx.closePath();
+}
+
+function drawIcon(canvas, icon, px, bleed) {
+  canvas.width = px; canvas.height = px;
+  const ctx = canvas.getContext('2d');
+  const inset = bleed ? 0 : Math.round(px * 0.09);
+  const body = px - inset * 2;
+
+  // the glyph on its own transparent layer, so gaps can be erased from it
+  const layer = document.createElement('canvas');
+  layer.width = body; layer.height = body;
+  const g = layer.getContext('2d');
+  g.scale(body / 100, body / 100);
+  icon.glyph(g);
+
+  ctx.save();
+  if (!bleed) {
+    ctx.translate(inset, inset); ctx.scale(body / 100, body / 100);
+    ctx.shadowColor = 'rgba(20, 16, 50, 0.28)'; ctx.shadowBlur = px * 0.045; ctx.shadowOffsetY = px * 0.022;
+    rr(ctx, 0, 0, 100, 100, 23); ctx.fillStyle = icon.bg[1]; ctx.fill();
+    ctx.shadowColor = 'transparent';
+    rr(ctx, 0, 0, 100, 100, 23); ctx.clip();
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+  }
+  ctx.drawImage(gradientCanvas(body, icon.bg), inset, inset);
+  ctx.drawImage(layer, inset, inset);
+  ctx.restore();
+}
+
+// Diagonal gradient computed per pixel. A canvas gradient fill is dithered by
+// the browser, and that noise makes the PNG about ten times larger.
+function gradientCanvas(size, [from, to]) {
+  const rgb = hex => [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16));
+  const a = rgb(from), b = rgb(to);
+  const c = document.createElement('canvas');
+  c.width = size; c.height = size;
+  const ctx = c.getContext('2d');
+  const img = ctx.createImageData(size, size);
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) {
+      const t = (x + y + 1) / (2 * size), i = (y * size + x) * 4;
+      for (let k = 0; k < 3; k++) img.data[i + k] = Math.round(a[k] + (b[k] - a[k]) * t);
+      img.data[i + 3] = 255;
+    }
+  }
+  ctx.putImageData(img, 0, 0);
+  return c;
+}
+
+// `css` is the displayed size; `native` forces a 1:1 pixel buffer (for the zoomed proofs)
+function makeCanvas(icon, css, opts = {}) {
+  const c = document.createElement('canvas');
+  const px = opts.native || Math.round(css * (window.devicePixelRatio || 1));
+  drawIcon(c, icon, px, opts.bleed);
+  c.style.width = css + 'px'; c.style.height = css + 'px';
+  if (opts.native) c.className = 'zoom';
+  return c;
+}
+
+function fig(canvas, caption) {
+  const f = document.createElement('figure');
+  f.appendChild(canvas);
+  const cap = document.createElement('figcaption'); cap.textContent = caption;
+  f.appendChild(cap);
+  return f;
+}
+
+// Candidates for the leaf, each a take on the first speech-bubble leaf.
+// VARIANT 0 draws the leaf above; 1 to 5 draw a candidate in its place,
+// in the app icon and in the menu bar's template image.
+const VARIANT = 15;
+
+const CANDIDATES = (() => {
+  // A leaf in its own frame, base (-l, 0) and tip (l, 0), turned by `tilt`
+  // and placed at (cx, cy). Its edges are arcs that leave the axis by wu
+  // (up) and wl (down), so wu = wl is a lens of two equal arcs. `tail` is a
+  // polygon in the frame: the speech bubble's tail.
+  function arcLeaf(o) {
+    const arc = s => { const r = (o.l * o.l + s * s) / (2 * Math.abs(s)); return { c: s > 0 ? s - r : s + r, r }; };
+    const U = arc(-o.wu), D = arc(o.wl);
+    const lower = x => D.c + Math.sqrt(D.r * D.r - x * x);
+    return {
+      ...o, lower,
+      // With `tipR` (equal arcs only), the tip is a small arc of that
+      // radius, tangent to both edges, in place of the point.
+      body(ctx) {
+        ctx.beginPath();
+        if (o.tipR) {
+          const xc = Math.sqrt((U.r - o.tipR) ** 2 - U.c * U.c), a = Math.atan2(-U.c, xc);
+          ctx.arc(0, U.c, U.r, Math.atan2(-U.c, -o.l), a);
+          ctx.arc(xc, 0, o.tipR, a, -a);
+          ctx.arc(0, D.c, D.r, -a, Math.atan2(-D.c, -o.l));
+        } else {
+          ctx.arc(0, U.c, U.r, Math.atan2(-U.c, -o.l), Math.atan2(-U.c, o.l));
+          ctx.arc(0, D.c, D.r, Math.atan2(-D.c, o.l), Math.atan2(-D.c, -o.l));
+        }
+        ctx.closePath();
+      },
+      // `tail` is either a list of points or a function that draws the
+      // tail's path from the base, given the lower edge
+      tailPath(ctx) {
+        ctx.beginPath();
+        if (o.tail.length === 2) o.tail(ctx, lower);
+        else for (const [x, y] of o.tail(lower)) ctx.lineTo(x, y);
+        ctx.closePath();
+      },
+    };
+  }
+
+  // The first design's leaf and tail, unchanged.
+  const FIRST = {
+    cx: 50, cy: 46, tilt: -0.36,
+    body(ctx) {
+      ctx.beginPath();
+      ctx.moveTo(-31, 0);
+      ctx.bezierCurveTo(-29, -15, -11, -22, 5, -21);
+      ctx.bezierCurveTo(20, -20, 30, -6, 39, 0);
+      ctx.bezierCurveTo(30, 6, 20, 20, 5, 21);
+      ctx.bezierCurveTo(-11, 22, -29, 15, -31, 0);
+      ctx.closePath();
+    },
+    tailPath(ctx) {
+      ctx.beginPath();
+      ctx.moveTo(-31, 0);
+      ctx.bezierCurveTo(-32, 7, -35, 13, -40, 17);
+      ctx.bezierCurveTo(-32, 18, -25, 16, -20, 13);
+      ctx.lineTo(-25, 6);
+      ctx.closePath();
+    },
+  };
+
+  const frame = (ctx, s) => { ctx.translate(s.cx, s.cy); ctx.rotate(s.tilt); };
+
+  // Leaf and tail as one shape: both stroked at twice the line's width,
+  // then both filled, so the fill covers the inner half of the line.
+  function drawLeaf(ctx, s) {
+    ctx.save(); frame(ctx, s);
+    ctx.strokeStyle = NAVY; ctx.lineWidth = 5.2; ctx.lineJoin = 'round';
+    s.tailPath(ctx); ctx.stroke(); s.body(ctx); ctx.stroke();
+    ctx.fillStyle = GREEN; s.tailPath(ctx); ctx.fill(); s.body(ctx); ctx.fill();
+    ctx.restore();
+  }
+
+  // whether a point of the 100-unit box is inside the leaf's body
+  const probe = document.createElement('canvas').getContext('2d');
+  function inside(s, x, y) {
+    probe.setTransform(1, 0, 0, 1, 0, 0); frame(probe, s); s.body(probe);
+    probe.setTransform(1, 0, 0, 1, 0, 0);
+    return probe.isPointInPath(x, y);
+  }
+  // how far the body runs up and down from (x, y), the nearer of the two
+  function room(s, x, y) {
+    let up = 0, down = 0;
+    while (inside(s, x, y - up - 0.1)) up += 0.1;
+    while (inside(s, x, y + down + 0.1)) down += 0.1;
+    return Math.min(up, down);
+  }
+  // a point of the frame in the 100-unit box
+  const toBox = (s, x, y) => [s.cx + x * Math.cos(s.tilt) - y * Math.sin(s.tilt), s.cy + x * Math.sin(s.tilt) + y * Math.cos(s.tilt)];
+
+  // x moved so that a bar of width w centred on it starts on a whole pixel
+  function snapX(ctx, x, w) {
+    const m = ctx.getTransform();
+    return (Math.round((x - w / 2) * m.a + m.e) - m.e) / m.a + w / 2;
+  }
+
+  // Upright bars. `bars` lists each bar's x off the leaf's centre and its
+  // share of the room there; `centre(x)` gives the y it is centred on.
+  // With `pattern`, a share is of the middle bar's height, not of the room
+  // at the bar, so the heights keep their rhythm across the leaf.
+  // Below 24 px across, more than three bars run together: the middle
+  // three are drawn, a pixel wide and three pixels apart.
+  function drawBars(ctx, s, bars, w, gap, centre, colour, pattern = false) {
+    const k = ctx.getTransform().a;
+    if (k * 100 < 24 && bars.length > 3) {
+      const m = Math.floor(bars.length / 2), c = colour;
+      bars = [-1, 0, 1].map(j => [j * 3 / k, bars[m + j][1]]);
+      w = 1 / k; colour = i => c(m - 1 + i);
+    }
+    const [x0] = toBox(s, s.mid || 0, 0), full = room(s, x0, centre(x0)) - gap;
+    bars.forEach(([dx, share], i) => {
+      const x = x0 + dx, y = centre(x), fit = room(s, x, y) - gap;
+      const h = pattern ? Math.min(share * full, fit) : fit * share;
+      const xs = snapX(ctx, x, w);
+      stroke(ctx, [[xs, y - h], [xs, y + h]], colour(i), w);
+    });
+  }
+
+  // The template: leaf and tail as one black silhouette, fitted to the
+  // square, with `cut` (drawing in the same units) taken out of it.
+  function template(s, cut) {
+    return (canvas, px) => {
+      canvas.width = px; canvas.height = px;
+      // find the silhouette's bounds once, on a large canvas
+      if (!s.fit) {
+        const big = document.createElement('canvas'); big.width = big.height = 400;
+        const b = big.getContext('2d'); b.scale(4, 4); silhouette(b, s);
+        const d = b.getImageData(0, 0, 400, 400).data;
+        let x0 = 400, y0 = 400, x1 = 0, y1 = 0;
+        for (let y = 0; y < 400; y++) for (let x = 0; x < 400; x++) if (d[(y * 400 + x) * 4 + 3] > 8) {
+          x0 = Math.min(x0, x); x1 = Math.max(x1, x); y0 = Math.min(y0, y); y1 = Math.max(y1, y);
+        }
+        const k = 94 / (Math.max(x1 - x0, y1 - y0) / 4);
+        s.fit = { k, x: (x0 + x1) / 8, y: (y0 + y1) / 8 };
+      }
+      const ctx = canvas.getContext('2d');
+      ctx.scale(px / 100, px / 100);
+      ctx.translate(50, 50); ctx.scale(s.fit.k, s.fit.k); ctx.translate(-s.fit.x, -s.fit.y);
+      silhouette(ctx, s);
+      ctx.globalCompositeOperation = 'destination-out';
+      cut(ctx);
+    };
+  }
+  function silhouette(ctx, s) {
+    ctx.save(); frame(ctx, s);
+    ctx.fillStyle = ctx.strokeStyle = '#000'; ctx.lineWidth = 3; ctx.lineJoin = 'round';
+    for (const p of [s.tailPath, s.body]) { p(ctx); ctx.fill(); ctx.stroke(); }
+    ctx.restore();
+  }
+  const black = () => '#000';
+  const amberAt = n => i => i === n ? AMBER : NAVY;
+
+  // 1. The first leaf, its outline rebuilt as a lens of two equal arcs and
+  // its tail as a straight-sided wedge; five bars on a level line, each
+  // stopping the same distance short of the outline.
+  const s1 = arcLeaf({ cx: 53.5, cy: 44.6, tilt: -0.36, l: 35, wu: 21, wl: 21,
+    tail: lower => [[-35, 0], [-44, 17], [-22, lower(-22)]] });
+  const level1 = () => 46;
+  const bars1 = [[-16, 1], [-8, 1], [0, 1], [8, 1], [16, 1]];
+
+  // 2. The same bubble leaf turned to 45 degrees, its tail pointing down
+  // and back; five upright bars on a level line, graduated like a voice.
+  const s2 = arcLeaf({ cx: 52, cy: 47, tilt: -Math.PI / 4, l: 37, wu: 21, wl: 21,
+    tail: lower => [[-37, 0], [-46, 17], [-24, lower(-24)]] });
+  const level2 = () => 48;
+  const bars2 = [[-16, 0.45], [-8, 0.8], [0, 1], [8, 0.8], [16, 0.45]];
+
+  // 3. The first leaf exactly as it was; seven bars, evenly spaced, in a
+  // rhythm that alternates like speech and mirrors about the amber middle.
+  const s3 = { ...FIRST, mid: 1 };
+  const level3 = () => 47;
+  const bars3 = [[-19.5, 0.3], [-13, 0.7], [-6.5, 0.48], [0, 1], [6.5, 0.48], [13, 0.7], [19.5, 0.3]];
+
+  // 4. The arc bubble at 30 degrees, split along a gently curved midrib
+  // into its two greens, the light one above and the accent below, as a
+  // leaf's two halves catch the light; five upright bars over both.
+  const ACCENT = '#519f5c';
+  const s4 = arcLeaf({ cx: 53, cy: 45.5, tilt: -Math.PI / 6, l: 36, wu: 21, wl: 21,
+    tail: lower => [[-36, 0], [-45, 17], [-23, lower(-23)]] });
+  const RIB4 = (() => { const l = 36, m = 4, r = (l * l + m * m) / (2 * m); return { c: m - r, r, l }; })();
+  function halves4(ctx) {
+    ctx.save(); frame(ctx, s4);
+    ctx.fillStyle = ACCENT; s4.tailPath(ctx); ctx.fill();
+    s4.body(ctx); ctx.clip();
+    ctx.beginPath();
+    ctx.arc(0, RIB4.c, RIB4.r, Math.atan2(-RIB4.c, RIB4.l), Math.atan2(-RIB4.c, -RIB4.l));
+    ctx.lineTo(-RIB4.l - 10, 40); ctx.lineTo(RIB4.l + 10, 40); ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+  }
+  const level4 = () => 47;
+  const bars4 = [[-16, 0.45], [-8, 0.78], [0, 1], [8, 0.78], [16, 0.45]];
+
+  // 5. The arc bubble with three bold bars, the amber one tallest: the
+  // plainest reading, the same at every size.
+  const s5 = arcLeaf({ cx: 53.5, cy: 44.6, tilt: -0.36, l: 35, wu: 22, wl: 22,
+    tail: lower => [[-35, 0], [-44, 17], [-22, lower(-22)]] });
+  const level5 = () => 46;
+  const bars5 = [[-11, 0.62], [0, 1], [11, 0.62]];
+
+  // 6 to 10. Candidate 1's arc-built leaf with the first design's six
+  // bars, as they were: the same lengths and spacing, upright on a level
+  // line, amber fourth. They differ in the tail. The tail starts at the
+  // base with its outer edge going on from the upper arc.
+  const SIX = [[-16, 4.5], [-8, 9.5], [0, 6.5], [8, 12], [16, 8], [23.5, 3.5]];
+  const SIX_TEMPLATE = [[-14, 6], [-2, 11], [10, 7.5], [21, 3.5]];
+  // Bars at d along the first design's tilt from x = 50, centred on y = 47.
+  // Below 24 px across, the three around the middle, a pixel wide and three
+  // pixels apart.
+  function sixBars(ctx, bars, w, colour) {
+    const k = ctx.getTransform().a, at = d => 50 + d * Math.cos(-0.36);
+    let list = bars.map(([d, h], i) => [at(d), h, i]);
+    if (k * 100 < 24) {
+      const m = Math.floor(bars.length / 2);
+      list = [-1, 0, 1].map(j => [at(bars[m][0]) + j * 3 / k, bars[m + j][1], m + j]);
+      w = 1 / k;
+    }
+    for (const [x, h, i] of list) {
+      const xs = snapX(ctx, x, w);
+      stroke(ctx, [[xs, 47 - h], [xs, 47 + h]], colour(i), w);
+    }
+  }
+  const sixLeaf = tail => arcLeaf({ cx: 53.5, cy: 44.6, tilt: -0.36, l: 35, wu: 21, wl: 21, tail });
+  // the unit vector along the lower edge at x, toward the base
+  const back = (lower, x) => { const dx = -0.5, dy = lower(x + dx) - lower(x), n = Math.hypot(dx, dy); return [dx / n, dy / n]; };
+  // the tail of 9 and 11 to 15: a point rounded by an arc of radius r,
+  // then a concave edge that runs into the lower arc
+  function concave(ctx, lower, r) {
+    const x = -17, [tx, ty] = back(lower, x);
+    ctx.moveTo(-35, 0); ctx.arcTo(-44, 17, -30, 17, r);
+    ctx.quadraticCurveTo(x + tx * 9, lower(x) + ty * 9, x, lower(x));
+  }
+  const TAILS = {
+    // the wedge of candidate 1, its point rounded by a small arc
+    6: (ctx, lower) => { ctx.moveTo(-35, 0); ctx.arcTo(-44, 17, -22, lower(-22), 4); ctx.lineTo(-22, lower(-22)); },
+    // a stalk: a straight rod on the wedge's line, out and back, so the
+    // stroke draws it a line wide with round ends
+    7: (ctx, lower) => { ctx.moveTo(-34, 0); ctx.lineTo(-41, 13.5); },
+    // a short, blunt tail held close to the body
+    8: (ctx, lower) => { ctx.moveTo(-35, 0); ctx.arcTo(-40, 11, -27, lower(-27), 3); ctx.lineTo(-27, lower(-27)); },
+    // a softened point, then a concave edge that runs into the lower arc
+    9: (ctx, lower) => concave(ctx, lower, 3.5),
+    // a lobe that ends in a half circle
+    10: (ctx, lower) => {
+      const ex = -41, ey = 15, r = 4.5, a = Math.atan2(8, -11);
+      ctx.moveTo(-35, 0);
+      ctx.arc(ex, ey, r, a + Math.PI / 2, a - Math.PI / 2, true);
+      ctx.lineTo(-24, lower(-24));
+    },
+  };
+  const SIXES = Object.fromEntries(Object.entries(TAILS).map(([n, t]) => [n, sixLeaf(t)]));
+  // 11 to 15: 9 refined in five even steps, the tail's point sharper (its
+  // arc smaller) as the leaf's tip grows softer (its arc larger)
+  const STEPS = { 11: [3, 2], 12: [2.5, 3.5], 13: [2, 5], 14: [1.5, 7], 15: [1, 9] };
+  for (const [n, [tail, tip]] of Object.entries(STEPS)) {
+    SIXES[n] = arcLeaf({ cx: 53.5, cy: 44.6, tilt: -0.36, l: 35, wu: 21, wl: 21, tipR: tip,
+      tail: (ctx, lower) => concave(ctx, lower, tail) });
+  }
+
+  const INFO = {
+    1: ["Arc bubble", "The first leaf at its first tilt, its outline rebuilt as two equal arcs with a straight-sided tail, and five bars that each stop the same distance short of the edge."],
+    2: ["Bubble at 45", "The same arc-built bubble leaf turned to 45 degrees, with five upright bars that swell to the amber middle like a voice."],
+    3: ["Mirrored rhythm", "The first leaf exactly as drawn, with seven evenly spaced bars whose short and tall beats mirror about the amber middle."],
+    4: ["Two-tone halves", "An arc-built bubble leaf at 30 degrees, split along a gently curved midrib into a light green and a deep green half, with five voice-graded bars across both."],
+    5: ["Three bold bars", "The arc-built bubble leaf with only three thick bars, the amber one tallest, so it reads the same from 512 px down to 16."],
+    6: ["Soft point", "The tail keeps candidate 1's straight wedge, with its point rounded by a small arc."],
+    7: ["Stalk tail", "The tail is a short straight stalk, a rod as wide as the outline with round ends, set where the wedge was."],
+    8: ["Tucked tail", "The tail is short and blunt, held close to the body, with a lightly rounded point."],
+    9: ["Concave sweep", "The tail has a softened point and a concave lower edge that runs smoothly into the leaf's lower arc."],
+    10: ["Round end", "The tail is a short lobe that ends in a half circle, with no point at all."],
+    11: ["Tail 3, tip 2", "Step 1, lightest: the tail's point is rounded by a 3 unit arc (now 3.5) and the leaf's tip by a 2 unit arc (now a sharp point), on the 100 unit icon."],
+    12: ["Tail 2.5, tip 3.5", "Step 2: the tail's point is rounded by a 2.5 unit arc (now 3.5) and the leaf's tip by a 3.5 unit arc (now a sharp point), on the 100 unit icon."],
+    13: ["Tail 2, tip 5", "Step 3, middle: the tail's point is rounded by a 2 unit arc (now 3.5) and the leaf's tip by a 5 unit arc (now a sharp point), on the 100 unit icon."],
+    14: ["Tail 1.5, tip 7", "Step 4: the tail's point is rounded by a 1.5 unit arc (now 3.5) and the leaf's tip by a 7 unit arc (now a sharp point), on the 100 unit icon."],
+    15: ["Tail 1, tip 9", "Step 5, strongest: the tail's point is rounded by a 1 unit arc (now 3.5) and the leaf's tip by a 9 unit arc (now a sharp point), on the 100 unit icon."],
+  };
+  const spark = (x, y) => ctx => { ctx.fillStyle = VIOLET; sparkle(ctx, x, y, 5.5); ctx.fill(); };
+  const make = (n, glyph, tpl) => ({ icon: { ...ICONS[0], name: INFO[n][0], desc: INFO[n][1], glyph }, template: tpl });
+
+  return {
+    1: make(1, ctx => { drawLeaf(ctx, s1); drawBars(ctx, s1, bars1, 4.5, 6, level1, amberAt(2)); spark(23, 27)(ctx); },
+      template(s1, ctx => drawBars(ctx, s1, [[-11, 1], [0, 1], [11, 1]], 6.5, 8, level1, black))),
+    2: make(2, ctx => { drawLeaf(ctx, s2); drawBars(ctx, s2, bars2, 4.5, 5, level2, amberAt(2)); spark(22, 25)(ctx); },
+      template(s2, ctx => drawBars(ctx, s2, [[-11, 0.7], [0, 1], [11, 0.7]], 6.5, 7, level2, black))),
+    3: make(3, ctx => { drawLeaf(ctx, s3); drawBars(ctx, s3, bars3, 4, 5, level3, amberAt(3), true); spark(23, 28)(ctx); },
+      template(s3, ctx => drawBars(ctx, s3, [[-10, 0.6], [0, 1], [10, 0.6]], 6, 7, level3, black, true))),
+    4: make(4, ctx => {
+        drawLeaf(ctx, s4); halves4(ctx);
+        drawBars(ctx, s4, bars4, 4.5, 5, level4, amberAt(2), true); spark(22, 26)(ctx);
+      },
+      template(s4, ctx => drawBars(ctx, s4, [[-11, 0.7], [0, 1], [11, 0.7]], 6.5, 7, level4, black, true))),
+    5: make(5, ctx => { drawLeaf(ctx, s5); drawBars(ctx, s5, bars5, 7, 6, level5, amberAt(1)); spark(23, 27)(ctx); },
+      template(s5, ctx => drawBars(ctx, s5, bars5, 8, 7, level5, black))),
+    ...Object.fromEntries(Object.entries(SIXES).map(([n, s]) => [n, make(n,
+      ctx => { drawLeaf(ctx, s); sixBars(ctx, SIX, 4.5, amberAt(3)); spark(23, 28)(ctx); },
+      template(s, ctx => sixBars(ctx, SIX_TEMPLATE, 6.5, black)))])),
+  };
+})();
+
+if (VARIANT) { ICONS[0] = CANDIDATES[VARIANT].icon; drawTemplate = CANDIDATES[VARIANT].template; }
+
+const cards = document.getElementById('cards');
+for (const icon of ICONS) {
+  const card = document.createElement('div'); card.className = 'card';
+  card.appendChild(makeCanvas(icon, 280));
+  const info = document.createElement('div');
+  info.innerHTML = `<h2>${icon.name}</h2><p>${icon.desc}</p>`;
+  const sizes = document.createElement('div'); sizes.className = 'sizes';
+  for (const n of [128, 64, 32, 16]) sizes.appendChild(fig(makeCanvas(icon, n), String(n)));
+  const gap = document.createElement('div'); gap.className = 'gap'; sizes.appendChild(gap);
+  sizes.appendChild(fig(makeCanvas(icon, 128, { native: 32 }), '32 px ×4'));
+  sizes.appendChild(fig(makeCanvas(icon, 64, { native: 16 }), '16 px ×4'));
+  info.appendChild(sizes);
+  card.appendChild(info);
+  cards.appendChild(card);
+}
+
+for (const id of ['bar-dark', 'bar-light']) {
+  const bar = document.getElementById(id);
+  for (const icon of ICONS) {
+    const app = document.createElement('div'); app.className = 'org';
+    app.appendChild(makeCanvas(icon, 48, { bleed: true }));
+    const t = document.createElement('span'); t.textContent = 'Kotoba';
+    app.appendChild(t);
+    const m = document.createElement('canvas'); m.className = 'template';
+    drawTemplate(m, Math.round(18 * (window.devicePixelRatio || 1)));
+    m.style.width = '18px'; m.style.height = '18px';
+    app.appendChild(m);
+    bar.appendChild(app);
+  }
+}
+
+window.exportTemplate = (px = 36) => {
+  const c = document.createElement('canvas');
+  drawTemplate(c, px);
+  return c.toDataURL('image/png');
+};
+
+// 2048 px PNG as a data URL: the full square by default, or the squircle
+// app icon with exportIcon(2048, false)
+window.exportIcon = (px = 2048, bleed = true) => {
+  const c = document.createElement('canvas');
+  drawIcon(c, ICONS[0], px, bleed);
+  return c.toDataURL('image/png');
+};
+</script>
+</body>
+</html>

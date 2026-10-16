@@ -1,0 +1,1568 @@
+{
+  "General": {
+    "zh-Hans": "通用",
+    "zh-Hant": "一般",
+    "ja": "一般",
+    "ko": "일반",
+    "fr": "Général",
+    "de": "Allgemein",
+    "es": "General"
+  },
+  "Models": {
+    "zh-Hans": "模型",
+    "zh-Hant": "模型",
+    "ja": "モデル",
+    "ko": "모델",
+    "fr": "Modèles",
+    "de": "Modelle",
+    "es": "Modelos"
+  },
+  "Customize": {
+    "zh-Hans": "自定义",
+    "zh-Hant": "自訂",
+    "ja": "カスタマイズ",
+    "ko": "사용자화",
+    "fr": "Personnaliser",
+    "de": "Anpassen",
+    "es": "Personalizar"
+  },
+  "Updates": {
+    "zh-Hans": "更新",
+    "zh-Hant": "更新",
+    "ja": "アップデート",
+    "ko": "업데이트",
+    "fr": "Mises à jour",
+    "de": "Updates",
+    "es": "Actualizaciones"
+  },
+  "About": {
+    "zh-Hans": "关于",
+    "zh-Hant": "關於",
+    "ja": "情報",
+    "ko": "정보",
+    "fr": "À propos",
+    "de": "Über",
+    "es": "Acerca de"
+  },
+  "Quit Kotoba": {
+    "zh-Hans": "退出 Kotoba",
+    "zh-Hant": "結束 Kotoba",
+    "ja": "Kotoba を終了",
+    "ko": "Kotoba 종료",
+    "fr": "Quitter Kotoba",
+    "de": "Kotoba beenden",
+    "es": "Salir de Kotoba"
+  },
+  "Dictation": {
+    "zh-Hans": "听写",
+    "zh-Hant": "聽寫",
+    "ja": "音声入力",
+    "ko": "받아쓰기",
+    "fr": "Dictée",
+    "de": "Diktat",
+    "es": "Dictado"
+  },
+  "Shortcut": {
+    "zh-Hans": "快捷键",
+    "zh-Hant": "快速鍵",
+    "ja": "ショートカット",
+    "ko": "단축키",
+    "fr": "Raccourci",
+    "de": "Kurzbefehl",
+    "es": "Atajo"
+  },
+  "Starts and stops dictation.": {
+    "zh-Hans": "开始和停止听写。",
+    "zh-Hant": "開始和停止聽寫。",
+    "ja": "音声入力を開始・停止します。",
+    "ko": "받아쓰기를 시작하고 멈춥니다.",
+    "fr": "Lance et arrête la dictée.",
+    "de": "Startet und stoppt das Diktat.",
+    "es": "Inicia y detiene el dictado."
+  },
+  "Press the keys": {
+    "zh-Hans": "按下按键",
+    "zh-Hant": "按下按鍵",
+    "ja": "キーを押してください",
+    "ko": "키를 누르세요",
+    "fr": "Appuyez sur les touches",
+    "de": "Tasten drücken",
+    "es": "Pulsa las teclas"
+  },
+  "More": {
+    "zh-Hans": "更多",
+    "zh-Hant": "更多",
+    "ja": "その他",
+    "ko": "더 보기",
+    "fr": "Plus",
+    "de": "Mehr",
+    "es": "Más"
+  },
+  "Modifier keys tapped alone": {
+    "zh-Hans": "单独轻按修饰键",
+    "zh-Hant": "單獨輕按輔助鍵",
+    "ja": "修飾キーだけを押す",
+    "ko": "보조 키만 누르기",
+    "fr": "Touches de modification seules",
+    "de": "Nur Sondertasten tippen",
+    "es": "Solo teclas modificadoras"
+  },
+  "Reset": {
+    "zh-Hans": "重置",
+    "zh-Hant": "重置",
+    "ja": "リセット",
+    "ko": "재설정",
+    "fr": "Rétablir",
+    "de": "Standard",
+    "es": "Restablecer"
+  },
+  "Right": {
+    "zh-Hans": "右",
+    "zh-Hant": "右",
+    "ja": "右",
+    "ko": "오른쪽",
+    "fr": "Droite",
+    "de": "Rechts",
+    "es": "Derecha"
+  },
+  "With ⌘ or ⌥.": {
+    "zh-Hans": "需带 ⌘ 或 ⌥。",
+    "zh-Hant": "需帶 ⌘ 或 ⌥。",
+    "ja": "⌘ か ⌥ と一緒に。",
+    "ko": "⌘ 또는 ⌥와 함께.",
+    "fr": "Avec ⌘ ou ⌥.",
+    "de": "Mit ⌘ oder ⌥.",
+    "es": "Con ⌘ o ⌥."
+  },
+  "With Ctrl or Alt.": {
+    "zh-Hans": "需带 Ctrl 或 Alt。",
+    "zh-Hant": "需帶 Ctrl 或 Alt。",
+    "ja": "Ctrl か Alt と一緒に。",
+    "ko": "Ctrl 또는 Alt와 함께.",
+    "fr": "Avec Ctrl ou Alt.",
+    "de": "Mit Strg oder Alt.",
+    "es": "Con Ctrl o Alt."
+  },
+  "{key} is taken.": {
+    "zh-Hans": "{key} 已被占用。",
+    "zh-Hant": "{key} 已被佔用。",
+    "ja": "{key} は使用中です。",
+    "ko": "{key}은(는) 이미 사용 중입니다.",
+    "fr": "{key} est déjà pris.",
+    "de": "{key} ist schon belegt.",
+    "es": "{key} ya está en uso."
+  },
+  "Fn 🌐 would also change the input source.": {
+    "zh-Hans": "Fn 🌐 还会切换输入法。",
+    "zh-Hant": "Fn 🌐 還會切換輸入法。",
+    "ja": "Fn 🌐 は入力ソースも切り替えます。",
+    "ko": "Fn 🌐 키가 입력 소스도 변경합니다.",
+    "fr": "Fn 🌐 changerait aussi la source de saisie.",
+    "de": "Fn 🌐 würde auch die Eingabequelle wechseln.",
+    "es": "Fn 🌐 también cambiaría la fuente de entrada."
+  },
+  "Fn 🌐 would also show emoji and symbols.": {
+    "zh-Hans": "Fn 🌐 还会显示表情与符号。",
+    "zh-Hant": "Fn 🌐 還會顯示表情符號與符號。",
+    "ja": "Fn 🌐 は絵文字と記号も表示します。",
+    "ko": "Fn 🌐 키가 이모티콘 및 기호도 표시합니다.",
+    "fr": "Fn 🌐 afficherait aussi les emojis et symboles.",
+    "de": "Fn 🌐 würde auch Emoji & Symbole zeigen.",
+    "es": "Fn 🌐 también mostraría emojis y símbolos."
+  },
+  "Fn 🌐 would also start Apple's dictation.": {
+    "zh-Hans": "Fn 🌐 还会启动 Apple 的听写。",
+    "zh-Hant": "Fn 🌐 還會啟動 Apple 的聽寫。",
+    "ja": "Fn 🌐 は Apple の音声入力も開始します。",
+    "ko": "Fn 🌐 키가 Apple 받아쓰기도 시작합니다.",
+    "fr": "Fn 🌐 lancerait aussi la dictée d’Apple.",
+    "de": "Fn 🌐 würde auch Apples Diktat starten.",
+    "es": "Fn 🌐 también iniciaría el dictado de Apple."
+  },
+  "Fn 🌐 also has a use in macOS.": {
+    "zh-Hans": "Fn 🌐 在 macOS 中另有用途。",
+    "zh-Hant": "Fn 🌐 在 macOS 中另有用途。",
+    "ja": "Fn 🌐 には macOS での役割もあります。",
+    "ko": "Fn 🌐 키는 macOS에서도 쓰입니다.",
+    "fr": "Fn 🌐 a aussi un rôle dans macOS.",
+    "de": "Fn 🌐 hat auch eine Aufgabe in macOS.",
+    "es": "Fn 🌐 también tiene una función en macOS."
+  },
+  "Set it to Do Nothing.": {
+    "zh-Hans": "请将其设为“不执行任何操作”。",
+    "zh-Hant": "請將其設為「不執行任何動作」。",
+    "ja": "「何もしない」に設定してください。",
+    "ko": "‘아무것도 안 함’으로 설정하세요.",
+    "fr": "Choisissez « Ne rien faire ».",
+    "de": "Wähle „Keine Aktion“.",
+    "es": "Elige «No hacer nada»."
+  },
+  "History": {
+    "zh-Hans": "历史记录",
+    "zh-Hant": "歷史記錄",
+    "ja": "履歴",
+    "ko": "기록",
+    "fr": "Historique",
+    "de": "Verlauf",
+    "es": "Historial"
+  },
+  "Kept on this Mac only.": {
+    "zh-Hans": "仅保存在这台 Mac 上。",
+    "zh-Hant": "僅儲存在這台 Mac 上。",
+    "ja": "この Mac にのみ保存されます。",
+    "ko": "이 Mac에만 보관됩니다.",
+    "fr": "Sur ce Mac seulement.",
+    "de": "Nur auf diesem Mac.",
+    "es": "Solo en este Mac."
+  },
+  "Show History": {
+    "zh-Hans": "显示历史记录",
+    "zh-Hant": "顯示歷史記錄",
+    "ja": "履歴を表示",
+    "ko": "기록 보기",
+    "fr": "Voir l’historique",
+    "de": "Verlauf zeigen",
+    "es": "Ver historial"
+  },
+  "App": {
+    "zh-Hans": "应用",
+    "zh-Hant": "App",
+    "ja": "アプリ",
+    "ko": "앱",
+    "fr": "App",
+    "de": "App",
+    "es": "App"
+  },
+  "Theme": {
+    "zh-Hans": "主题",
+    "zh-Hant": "主題",
+    "ja": "テーマ",
+    "ko": "테마",
+    "fr": "Thème",
+    "de": "Design",
+    "es": "Tema"
+  },
+  "System": {
+    "zh-Hans": "跟随系统",
+    "zh-Hant": "跟隨系統",
+    "ja": "システム",
+    "ko": "시스템",
+    "fr": "Système",
+    "de": "System",
+    "es": "Sistema"
+  },
+  "Light": {
+    "zh-Hans": "浅色",
+    "zh-Hant": "淺色",
+    "ja": "ライト",
+    "ko": "라이트",
+    "fr": "Clair",
+    "de": "Hell",
+    "es": "Claro"
+  },
+  "Dark": {
+    "zh-Hans": "深色",
+    "zh-Hant": "深色",
+    "ja": "ダーク",
+    "ko": "다크",
+    "fr": "Sombre",
+    "de": "Dunkel",
+    "es": "Oscuro"
+  },
+  "Launch at login": {
+    "zh-Hans": "登录时打开",
+    "zh-Hant": "登入時打開",
+    "ja": "ログイン時に開く",
+    "ko": "로그인 시 열기",
+    "fr": "Ouvrir à l’ouverture de session",
+    "de": "Beim Anmelden öffnen",
+    "es": "Abrir al iniciar sesión"
+  },
+  "Login Items": {
+    "zh-Hans": "登录项",
+    "zh-Hant": "登入項目",
+    "ja": "ログイン項目",
+    "ko": "로그인 항목",
+    "fr": "Ouverture",
+    "de": "Anmeldeobjekte",
+    "es": "Ítems de inicio"
+  },
+  "Allow Kotoba in Login Items.": {
+    "zh-Hans": "请在“登录项”中允许 Kotoba。",
+    "zh-Hant": "請在「登入項目」中允許 Kotoba。",
+    "ja": "「ログイン項目」で Kotoba を許可してください。",
+    "ko": "‘로그인 항목’에서 Kotoba를 허용하세요.",
+    "fr": "Autorisez Kotoba dans Ouverture.",
+    "de": "Erlaube Kotoba in den Anmeldeobjekten.",
+    "es": "Permite Kotoba en Ítems de inicio."
+  },
+  "Show in menu bar": {
+    "zh-Hans": "在菜单栏中显示",
+    "zh-Hant": "在選單列中顯示",
+    "ja": "メニューバーに表示",
+    "ko": "메뉴 막대에 표시",
+    "fr": "Afficher dans la barre des menus",
+    "de": "In der Menüleiste zeigen",
+    "es": "Mostrar en la barra de menús"
+  },
+  "When hidden, open Kotoba again to come back here.": {
+    "zh-Hans": "隐藏后，再次打开 Kotoba 即可回到这里。",
+    "zh-Hant": "隱藏後，再次打開 Kotoba 即可回到這裡。",
+    "ja": "非表示のときは、Kotoba をもう一度開くとここに戻れます。",
+    "ko": "숨긴 경우 Kotoba를 다시 열면 여기로 돌아옵니다.",
+    "fr": "Masqué, rouvrez Kotoba pour revenir ici.",
+    "de": "Ausgeblendet: Öffne Kotoba erneut, um hierher zu kommen.",
+    "es": "Si está oculto, abre Kotoba de nuevo para volver aquí."
+  },
+  "Swap clicks": {
+    "zh-Hans": "交换左右键",
+    "zh-Hant": "交換左右鍵",
+    "ja": "クリックを入れ替える",
+    "ko": "클릭 바꾸기",
+    "fr": "Inverser les clics",
+    "de": "Klicks tauschen",
+    "es": "Intercambiar clics"
+  },
+  "Left click shows the menu, right click opens settings.": {
+    "zh-Hans": "左键显示菜单，右键打开设置。",
+    "zh-Hant": "左鍵顯示選單，右鍵打開設定。",
+    "ja": "左クリックでメニュー、右クリックで設定を開きます。",
+    "ko": "왼쪽 클릭은 메뉴, 오른쪽 클릭은 설정을 엽니다.",
+    "fr": "Clic gauche pour le menu, clic droit pour les réglages.",
+    "de": "Linksklick zeigt das Menü, Rechtsklick die Einstellungen.",
+    "es": "Clic izquierdo abre el menú; el derecho, los ajustes."
+  },
+  "Permissions": {
+    "zh-Hans": "权限",
+    "zh-Hant": "權限",
+    "ja": "アクセス権",
+    "ko": "권한",
+    "fr": "Autorisations",
+    "de": "Berechtigungen",
+    "es": "Permisos"
+  },
+  "Microphone": {
+    "zh-Hans": "麦克风",
+    "zh-Hant": "麥克風",
+    "ja": "マイク",
+    "ko": "마이크",
+    "fr": "Micro",
+    "de": "Mikrofon",
+    "es": "Micrófono"
+  },
+  "To hear you.": {
+    "zh-Hans": "用来听你说话。",
+    "zh-Hant": "用來聽你說話。",
+    "ja": "あなたの声を聞くため。",
+    "ko": "목소리를 듣기 위해.",
+    "fr": "Pour vous entendre.",
+    "de": "Um dich zu hören.",
+    "es": "Para oírte."
+  },
+  "Turn it on in System Settings.": {
+    "zh-Hans": "请在“系统设置”中打开。",
+    "zh-Hant": "請在「系統設定」中開啟。",
+    "ja": "「システム設定」でオンにしてください。",
+    "ko": "‘시스템 설정’에서 켜세요.",
+    "fr": "Activez-le dans Réglages Système.",
+    "de": "Schalte es in den Systemeinstellungen ein.",
+    "es": "Actívalo en Ajustes del Sistema."
+  },
+  "Accessibility": {
+    "zh-Hans": "辅助功能",
+    "zh-Hant": "輔助使用",
+    "ja": "アクセシビリティ",
+    "ko": "손쉬운 사용",
+    "fr": "Accessibilité",
+    "de": "Bedienungshilfen",
+    "es": "Accesibilidad"
+  },
+  "For the shortcut and paste.": {
+    "zh-Hans": "用于快捷键和粘贴。",
+    "zh-Hant": "用於快速鍵和貼上。",
+    "ja": "ショートカットとペーストのため。",
+    "ko": "단축키와 붙여넣기를 위해.",
+    "fr": "Pour le raccourci et le collage.",
+    "de": "Für Kurzbefehl und Einsetzen.",
+    "es": "Para el atajo y pegar."
+  },
+  "Allowed": {
+    "zh-Hans": "已允许",
+    "zh-Hant": "已允許",
+    "ja": "許可済み",
+    "ko": "허용됨",
+    "fr": "Autorisé",
+    "de": "Erlaubt",
+    "es": "Permitido"
+  },
+  "Allow": {
+    "zh-Hans": "允许",
+    "zh-Hant": "允許",
+    "ja": "許可",
+    "ko": "허용",
+    "fr": "Autoriser",
+    "de": "Erlauben",
+    "es": "Permitir"
+  },
+  "Open Settings": {
+    "zh-Hans": "打开设置",
+    "zh-Hant": "打開設定",
+    "ja": "設定を開く",
+    "ko": "설정 열기",
+    "fr": "Ouvrir les réglages",
+    "de": "Einstellungen öffnen",
+    "es": "Abrir ajustes"
+  },
+  "Speech to Text": {
+    "zh-Hans": "语音转文字",
+    "zh-Hant": "語音轉文字",
+    "ja": "音声認識",
+    "ko": "음성 인식",
+    "fr": "Reconnaissance vocale",
+    "de": "Sprache zu Text",
+    "es": "Voz a texto"
+  },
+  "Post-processing": {
+    "zh-Hans": "后处理",
+    "zh-Hant": "後處理",
+    "ja": "後処理",
+    "ko": "후처리",
+    "fr": "Post-traitement",
+    "de": "Nachbearbeitung",
+    "es": "Posprocesamiento"
+  },
+  "Download": {
+    "zh-Hans": "下载",
+    "zh-Hant": "下載",
+    "ja": "ダウンロード",
+    "ko": "다운로드",
+    "fr": "Télécharger",
+    "de": "Laden",
+    "es": "Descargar"
+  },
+  "Stop": {
+    "zh-Hans": "停止",
+    "zh-Hant": "停止",
+    "ja": "停止",
+    "ko": "중지",
+    "fr": "Arrêter",
+    "de": "Stopp",
+    "es": "Detener"
+  },
+  "Use": {
+    "zh-Hans": "使用",
+    "zh-Hant": "使用",
+    "ja": "使用",
+    "ko": "사용",
+    "fr": "Utiliser",
+    "de": "Nutzen",
+    "es": "Usar"
+  },
+  "In use": {
+    "zh-Hans": "使用中",
+    "zh-Hant": "使用中",
+    "ja": "使用中",
+    "ko": "사용 중",
+    "fr": "Utilisé",
+    "de": "In Gebrauch",
+    "es": "En uso"
+  },
+  "Chosen": {
+    "zh-Hans": "已选择",
+    "zh-Hant": "已選擇",
+    "ja": "選択済み",
+    "ko": "선택됨",
+    "fr": "Choisi",
+    "de": "Gewählt",
+    "es": "Elegido"
+  },
+  "Remove": {
+    "zh-Hans": "移除",
+    "zh-Hant": "移除",
+    "ja": "削除",
+    "ko": "제거",
+    "fr": "Supprimer",
+    "de": "Entfernen",
+    "es": "Quitar"
+  },
+  "Not removed: {e}.": {
+    "zh-Hans": "未能移除：{e}。",
+    "zh-Hant": "未能移除：{e}。",
+    "ja": "削除できませんでした：{e}。",
+    "ko": "제거하지 못했습니다: {e}.",
+    "fr": "Non supprimé : {e}.",
+    "de": "Nicht entfernt: {e}.",
+    "es": "No se quitó: {e}."
+  },
+  "{model} did not finish downloading: {e}.": {
+    "zh-Hans": "{model} 未能下载完成：{e}。",
+    "zh-Hant": "{model} 未能下載完成：{e}。",
+    "ja": "{model} のダウンロードが完了しませんでした：{e}。",
+    "ko": "{model} 다운로드를 마치지 못했습니다: {e}.",
+    "fr": "{model} n’a pas fini de se télécharger : {e}.",
+    "de": "{model} wurde nicht fertig geladen: {e}.",
+    "es": "{model} no terminó de descargarse: {e}."
+  },
+  "Best with mixed speech": {
+    "zh-Hans": "最适合混合语言",
+    "zh-Hant": "最適合混合語言",
+    "ja": "言語が混ざる話に最適",
+    "ko": "섞인 언어에 가장 적합",
+    "fr": "Idéal pour les langues mêlées",
+    "de": "Am besten bei gemischter Sprache",
+    "es": "El mejor con idiomas mezclados"
+  },
+  "Nearly as good, faster": {
+    "zh-Hans": "效果接近，更快",
+    "zh-Hant": "效果接近，更快",
+    "ja": "ほぼ同等で高速",
+    "ko": "거의 같은 품질, 더 빠름",
+    "fr": "Presque aussi bon, plus rapide",
+    "de": "Fast so gut, schneller",
+    "es": "Casi igual de bueno, más rápido"
+  },
+  "Hears the most languages": {
+    "zh-Hans": "支持的语言最多",
+    "zh-Hant": "支援的語言最多",
+    "ja": "最も多くの言語に対応",
+    "ko": "가장 많은 언어 인식",
+    "fr": "Comprend le plus de langues",
+    "de": "Versteht die meisten Sprachen",
+    "es": "Entiende más idiomas"
+  },
+  "Lightest, least exact": {
+    "zh-Hans": "最轻量，准确度最低",
+    "zh-Hant": "最輕量，準確度最低",
+    "ja": "最軽量、精度は最も低め",
+    "ko": "가장 가벼움, 가장 덜 정확함",
+    "fr": "Le plus léger, le moins exact",
+    "de": "Am leichtesten, am wenigsten genau",
+    "es": "El más ligero, el menos exacto"
+  },
+  "Most accurate": {
+    "zh-Hans": "最准确",
+    "zh-Hant": "最準確",
+    "ja": "最も正確",
+    "ko": "가장 정확함",
+    "fr": "Le plus précis",
+    "de": "Am genauesten",
+    "es": "El más preciso"
+  },
+  "Quicker, less exact": {
+    "zh-Hans": "更快，准确度稍低",
+    "zh-Hant": "更快，準確度稍低",
+    "ja": "より速く、精度はやや低め",
+    "ko": "더 빠름, 덜 정확함",
+    "fr": "Plus rapide, moins exact",
+    "de": "Schneller, weniger genau",
+    "es": "Más rápido, menos exacto"
+  },
+  "Fastest, least exact": {
+    "zh-Hans": "最快，准确度最低",
+    "zh-Hant": "最快，準確度最低",
+    "ja": "最速、精度は最も低め",
+    "ko": "가장 빠름, 가장 덜 정확함",
+    "fr": "Le plus rapide, le moins exact",
+    "de": "Am schnellsten, am wenigsten genau",
+    "es": "El más rápido, el menos exacto"
+  },
+  "30 languages": {
+    "zh-Hans": "30 种语言",
+    "zh-Hant": "30 種語言",
+    "ja": "30 言語",
+    "ko": "30개 언어",
+    "fr": "30 langues",
+    "de": "30 Sprachen",
+    "es": "30 idiomas"
+  },
+  "99 languages": {
+    "zh-Hans": "99 种语言",
+    "zh-Hant": "99 種語言",
+    "ja": "99 言語",
+    "ko": "99개 언어",
+    "fr": "99 langues",
+    "de": "99 Sprachen",
+    "es": "99 idiomas"
+  },
+  "201 languages": {
+    "zh-Hans": "201 种语言",
+    "zh-Hant": "201 種語言",
+    "ja": "201 言語",
+    "ko": "201개 언어",
+    "fr": "201 langues",
+    "de": "201 Sprachen",
+    "es": "201 idiomas"
+  },
+  "Preferences": {
+    "zh-Hans": "偏好",
+    "zh-Hant": "偏好",
+    "ja": "好み",
+    "ko": "선호 사항",
+    "fr": "Préférences",
+    "de": "Vorlieben",
+    "es": "Preferencias"
+  },
+  "Post-processing follows these over its own rules.": {
+    "zh-Hans": "后处理会优先遵循这些偏好。",
+    "zh-Hant": "後處理會優先遵循這些偏好。",
+    "ja": "後処理は自身の規則よりこれを優先します。",
+    "ko": "후처리는 자체 규칙보다 이것을 우선합니다.",
+    "fr": "Le post-traitement les suit avant ses propres règles.",
+    "de": "Die Nachbearbeitung folgt diesen vor ihren eigenen Regeln.",
+    "es": "El posprocesamiento las sigue antes que sus propias reglas."
+  },
+  "For post-processing, which is off, in Models.": {
+    "zh-Hans": "用于后处理，后处理已在“模型”中关闭。",
+    "zh-Hant": "用於後處理，後處理已在「模型」中關閉。",
+    "ja": "後処理用です。後処理は「モデル」でオフになっています。",
+    "ko": "후처리용이며, 후처리는 ‘모델’에서 꺼져 있습니다.",
+    "fr": "Pour le post-traitement, désactivé dans Modèles.",
+    "de": "Für die Nachbearbeitung, die unter Modelle aus ist.",
+    "es": "Para el posprocesamiento, desactivado en Modelos."
+  },
+  "Type in your preferences here in plain language.": {
+    "zh-Hans": "在这里用平常的话写下你的偏好。",
+    "zh-Hant": "在這裡用平常的話寫下你的偏好。",
+    "ja": "ここに好みを普段の言葉で書いてください。",
+    "ko": "여기에 선호 사항을 평소 말투로 적어 주세요.",
+    "fr": "Écrivez ici vos préférences, simplement.",
+    "de": "Schreib hier deine Vorlieben in einfachen Worten.",
+    "es": "Escribe aquí tus preferencias con palabras sencillas."
+  },
+  "Words": {
+    "zh-Hans": "词语",
+    "zh-Hant": "詞語",
+    "ja": "単語",
+    "ko": "단어",
+    "fr": "Mots",
+    "de": "Wörter",
+    "es": "Palabras"
+  },
+  "Terms": {
+    "zh-Hans": "术语",
+    "zh-Hant": "術語",
+    "ja": "用語",
+    "ko": "용어",
+    "fr": "Termes",
+    "de": "Begriffe",
+    "es": "Términos"
+  },
+  "Written exactly as you save them.": {
+    "zh-Hans": "完全按保存的样子书写。",
+    "zh-Hant": "完全按儲存的樣子書寫。",
+    "ja": "保存したとおりに書きます。",
+    "ko": "저장한 그대로 씁니다.",
+    "fr": "Écrits tels que vous les enregistrez.",
+    "de": "Genau so geschrieben, wie du sie speicherst.",
+    "es": "Se escriben tal como los guardas."
+  },
+  "Avoid": {
+    "zh-Hans": "禁用词",
+    "zh-Hant": "禁用詞",
+    "ja": "禁止語",
+    "ko": "금지어",
+    "fr": "À éviter",
+    "de": "Vermeiden",
+    "es": "Evitar"
+  },
+  "Never written.": {
+    "zh-Hans": "永远不会写出。",
+    "zh-Hant": "永遠不會寫出。",
+    "ja": "決して書きません。",
+    "ko": "절대 쓰지 않습니다.",
+    "fr": "Jamais écrits.",
+    "de": "Nie geschrieben.",
+    "es": "Nunca se escriben."
+  },
+  "Edit": {
+    "zh-Hans": "编辑",
+    "zh-Hant": "編輯",
+    "ja": "編集",
+    "ko": "편집",
+    "fr": "Modifier",
+    "de": "Bearbeiten",
+    "es": "Editar"
+  },
+  "None yet": {
+    "zh-Hans": "暂无",
+    "zh-Hant": "暫無",
+    "ja": "まだありません",
+    "ko": "아직 없음",
+    "fr": "Aucun",
+    "de": "Noch keine",
+    "es": "Ninguna aún"
+  },
+  "{n} word": {
+    "zh-Hans": "{n} 个词",
+    "zh-Hant": "{n} 個詞",
+    "ja": "{n} 語",
+    "ko": "{n}개 단어",
+    "fr": "{n} mot",
+    "de": "{n} Wort",
+    "es": "{n} palabra"
+  },
+  "{n} words": {
+    "zh-Hans": "{n} 个词",
+    "zh-Hant": "{n} 個詞",
+    "ja": "{n} 語",
+    "ko": "{n}개 단어",
+    "fr": "{n} mots",
+    "de": "{n} Wörter",
+    "es": "{n} palabras"
+  },
+  "Accept multiple terms at once": {
+    "zh-Hans": "可一次添加多个术语",
+    "zh-Hant": "可一次加入多個術語",
+    "ja": "複数の用語を一度に追加できます",
+    "ko": "여러 용어를 한 번에 추가할 수 있습니다",
+    "fr": "Plusieurs termes à la fois",
+    "de": "Mehrere Begriffe auf einmal",
+    "es": "Varios términos a la vez"
+  },
+  "Accept multiple words at once": {
+    "zh-Hans": "可一次添加多个词",
+    "zh-Hant": "可一次加入多個詞",
+    "ja": "複数の単語を一度に追加できます",
+    "ko": "여러 단어를 한 번에 추가할 수 있습니다",
+    "fr": "Plusieurs mots à la fois",
+    "de": "Mehrere Wörter auf einmal",
+    "es": "Varias palabras a la vez"
+  },
+  "Add": {
+    "zh-Hans": "添加",
+    "zh-Hant": "加入",
+    "ja": "追加",
+    "ko": "추가",
+    "fr": "Ajouter",
+    "de": "Hinzufügen",
+    "es": "Añadir"
+  },
+  "Add (↩)": {
+    "zh-Hans": "添加 (↩)",
+    "zh-Hant": "加入 (↩)",
+    "ja": "追加 (↩)",
+    "ko": "추가 (↩)",
+    "fr": "Ajouter (↩)",
+    "de": "Hinzufügen (↩)",
+    "es": "Añadir (↩)"
+  },
+  "No terms yet.": {
+    "zh-Hans": "还没有术语。",
+    "zh-Hant": "還沒有術語。",
+    "ja": "用語はまだありません。",
+    "ko": "아직 용어가 없습니다.",
+    "fr": "Aucun terme pour l’instant.",
+    "de": "Noch keine Begriffe.",
+    "es": "Aún no hay términos."
+  },
+  "No words to avoid yet.": {
+    "zh-Hans": "还没有禁用词。",
+    "zh-Hant": "還沒有禁用詞。",
+    "ja": "禁止語はまだありません。",
+    "ko": "아직 금지어가 없습니다.",
+    "fr": "Aucun mot à éviter pour l’instant.",
+    "de": "Noch keine Wörter zum Vermeiden.",
+    "es": "Aún no hay palabras que evitar."
+  },
+  "Written as saved, capitals and all.": {
+    "zh-Hans": "按保存的样子书写，包括大小写。",
+    "zh-Hant": "按儲存的樣子書寫，包括大小寫。",
+    "ja": "大文字・小文字も含め、保存したとおりに書きます。",
+    "ko": "대소문자까지 저장한 그대로 씁니다.",
+    "fr": "Écrits tels qu’enregistrés, majuscules comprises.",
+    "de": "So geschrieben wie gespeichert, samt Großschreibung.",
+    "es": "Se escriben tal como se guardan, mayúsculas incluidas."
+  },
+  "Never written: left out of what was heard.": {
+    "zh-Hans": "永远不会写出：会从听到的内容中去掉。",
+    "zh-Hant": "永遠不會寫出：會從聽到的內容中去掉。",
+    "ja": "決して書きません。聞き取った内容から除きます。",
+    "ko": "절대 쓰지 않습니다. 들은 내용에서 뺍니다.",
+    "fr": "Jamais écrits : retirés de ce qui a été entendu.",
+    "de": "Nie geschrieben: aus dem Gehörten entfernt.",
+    "es": "Nunca se escriben: se quitan de lo oído."
+  },
+  "Copy All": {
+    "zh-Hans": "全部复制",
+    "zh-Hant": "全部拷貝",
+    "ja": "すべてコピー",
+    "ko": "모두 복사",
+    "fr": "Tout copier",
+    "de": "Alle kopieren",
+    "es": "Copiar todo"
+  },
+  "Delete All": {
+    "zh-Hans": "全部删除",
+    "zh-Hant": "全部刪除",
+    "ja": "すべて削除",
+    "ko": "모두 삭제",
+    "fr": "Tout supprimer",
+    "de": "Alle löschen",
+    "es": "Eliminar todo"
+  },
+  "Delete {n} term?": {
+    "zh-Hans": "删除这 {n} 个术语？",
+    "zh-Hant": "刪除這 {n} 個術語？",
+    "ja": "{n} 件の用語を削除しますか？",
+    "ko": "용어 {n}개를 삭제할까요?",
+    "fr": "Supprimer {n} terme ?",
+    "de": "{n} Begriff löschen?",
+    "es": "¿Eliminar {n} término?"
+  },
+  "Delete all {n} terms?": {
+    "zh-Hans": "删除全部 {n} 个术语？",
+    "zh-Hant": "刪除全部 {n} 個術語？",
+    "ja": "{n} 件の用語をすべて削除しますか？",
+    "ko": "용어 {n}개를 모두 삭제할까요?",
+    "fr": "Supprimer les {n} termes ?",
+    "de": "Alle {n} Begriffe löschen?",
+    "es": "¿Eliminar los {n} términos?"
+  },
+  "Delete {n} word?": {
+    "zh-Hans": "删除这 {n} 个词？",
+    "zh-Hant": "刪除這 {n} 個詞？",
+    "ja": "{n} 語を削除しますか？",
+    "ko": "단어 {n}개를 삭제할까요?",
+    "fr": "Supprimer {n} mot ?",
+    "de": "{n} Wort löschen?",
+    "es": "¿Eliminar {n} palabra?"
+  },
+  "Delete all {n} words?": {
+    "zh-Hans": "删除全部 {n} 个词？",
+    "zh-Hant": "刪除全部 {n} 個詞？",
+    "ja": "{n} 語をすべて削除しますか？",
+    "ko": "단어 {n}개를 모두 삭제할까요?",
+    "fr": "Supprimer les {n} mots ?",
+    "de": "Alle {n} Wörter löschen?",
+    "es": "¿Eliminar las {n} palabras?"
+  },
+  "Cancel": {
+    "zh-Hans": "取消",
+    "zh-Hant": "取消",
+    "ja": "キャンセル",
+    "ko": "취소",
+    "fr": "Annuler",
+    "de": "Abbrechen",
+    "es": "Cancelar"
+  },
+  "Delete": {
+    "zh-Hans": "删除",
+    "zh-Hant": "刪除",
+    "ja": "削除",
+    "ko": "삭제",
+    "fr": "Supprimer",
+    "de": "Löschen",
+    "es": "Eliminar"
+  },
+  "Dictation History": {
+    "zh-Hans": "听写历史记录",
+    "zh-Hant": "聽寫歷史記錄",
+    "ja": "音声入力の履歴",
+    "ko": "받아쓰기 기록",
+    "fr": "Historique des dictées",
+    "de": "Diktatverlauf",
+    "es": "Historial de dictado"
+  },
+  "{n} dictation": {
+    "zh-Hans": "{n} 条听写",
+    "zh-Hant": "{n} 則聽寫",
+    "ja": "{n} 件の音声入力",
+    "ko": "받아쓰기 {n}개",
+    "fr": "{n} dictée",
+    "de": "{n} Diktat",
+    "es": "{n} dictado"
+  },
+  "{n} dictations": {
+    "zh-Hans": "{n} 条听写",
+    "zh-Hant": "{n} 則聽寫",
+    "ja": "{n} 件の音声入力",
+    "ko": "받아쓰기 {n}개",
+    "fr": "{n} dictées",
+    "de": "{n} Diktate",
+    "es": "{n} dictados"
+  },
+  "kept 1 day on this Mac": {
+    "zh-Hans": "在这台 Mac 上保留 1 天",
+    "zh-Hant": "在這台 Mac 上保留 1 天",
+    "ja": "この Mac に 1 日間保存",
+    "ko": "이 Mac에 1일 보관",
+    "fr": "gardées 1 jour sur ce Mac",
+    "de": "1 Tag auf diesem Mac behalten",
+    "es": "guardados 1 día en este Mac"
+  },
+  "kept 1 week on this Mac": {
+    "zh-Hans": "在这台 Mac 上保留 1 周",
+    "zh-Hant": "在這台 Mac 上保留 1 週",
+    "ja": "この Mac に 1 週間保存",
+    "ko": "이 Mac에 1주 보관",
+    "fr": "gardées 1 semaine sur ce Mac",
+    "de": "1 Woche auf diesem Mac behalten",
+    "es": "guardados 1 semana en este Mac"
+  },
+  "kept 1 month on this Mac": {
+    "zh-Hans": "在这台 Mac 上保留 1 个月",
+    "zh-Hant": "在這台 Mac 上保留 1 個月",
+    "ja": "この Mac に 1 か月保存",
+    "ko": "이 Mac에 1개월 보관",
+    "fr": "gardées 1 mois sur ce Mac",
+    "de": "1 Monat auf diesem Mac behalten",
+    "es": "guardados 1 mes en este Mac"
+  },
+  "kept 1 year on this Mac": {
+    "zh-Hans": "在这台 Mac 上保留 1 年",
+    "zh-Hant": "在這台 Mac 上保留 1 年",
+    "ja": "この Mac に 1 年間保存",
+    "ko": "이 Mac에 1년 보관",
+    "fr": "gardées 1 an sur ce Mac",
+    "de": "1 Jahr auf diesem Mac behalten",
+    "es": "guardados 1 año en este Mac"
+  },
+  "kept on this Mac": {
+    "zh-Hans": "保存在这台 Mac 上",
+    "zh-Hant": "儲存在這台 Mac 上",
+    "ja": "この Mac に保存",
+    "ko": "이 Mac에 보관",
+    "fr": "gardées sur ce Mac",
+    "de": "auf diesem Mac behalten",
+    "es": "guardados en este Mac"
+  },
+  "Copy": {
+    "zh-Hans": "复制",
+    "zh-Hant": "拷貝",
+    "ja": "コピー",
+    "ko": "복사",
+    "fr": "Copier",
+    "de": "Kopieren",
+    "es": "Copiar"
+  },
+  "Copied": {
+    "zh-Hans": "已复制",
+    "zh-Hant": "已拷貝",
+    "ja": "コピーしました",
+    "ko": "복사됨",
+    "fr": "Copié",
+    "de": "Kopiert",
+    "es": "Copiado"
+  },
+  "Copy post-processed": {
+    "zh-Hans": "复制后处理结果",
+    "zh-Hant": "拷貝後處理結果",
+    "ja": "後処理の結果をコピー",
+    "ko": "후처리 결과 복사",
+    "fr": "Copier le texte retravaillé",
+    "de": "Nachbearbeitetes kopieren",
+    "es": "Copiar lo posprocesado"
+  },
+  "Copy as heard": {
+    "zh-Hans": "复制原始听写",
+    "zh-Hant": "拷貝原始聽寫",
+    "ja": "聞き取ったままコピー",
+    "ko": "들은 그대로 복사",
+    "fr": "Copier tel qu’entendu",
+    "de": "Wie gehört kopieren",
+    "es": "Copiar tal como se oyó"
+  },
+  "Dictations are not saved.": {
+    "zh-Hans": "听写不会被保存。",
+    "zh-Hant": "聽寫不會被儲存。",
+    "ja": "音声入力は保存されません。",
+    "ko": "받아쓰기는 저장되지 않습니다.",
+    "fr": "Les dictées ne sont pas gardées.",
+    "de": "Diktate werden nicht gespeichert.",
+    "es": "Los dictados no se guardan."
+  },
+  "Nothing dictated yet.": {
+    "zh-Hans": "还没有听写内容。",
+    "zh-Hant": "還沒有聽寫內容。",
+    "ja": "まだ音声入力はありません。",
+    "ko": "아직 받아쓴 내용이 없습니다.",
+    "fr": "Rien n’a encore été dicté.",
+    "de": "Noch nichts diktiert.",
+    "es": "Aún no has dictado nada."
+  },
+  "Open in Finder": {
+    "zh-Hans": "在访达中打开",
+    "zh-Hant": "在 Finder 中打開",
+    "ja": "Finder で開く",
+    "ko": "Finder에서 열기",
+    "fr": "Ouvrir dans le Finder",
+    "de": "Im Finder öffnen",
+    "es": "Abrir en el Finder"
+  },
+  "Open folder": {
+    "zh-Hans": "打开文件夹",
+    "zh-Hant": "打開檔案夾",
+    "ja": "フォルダを開く",
+    "ko": "폴더 열기",
+    "fr": "Ouvrir le dossier",
+    "de": "Ordner öffnen",
+    "es": "Abrir carpeta"
+  },
+  "Close (esc)": {
+    "zh-Hans": "关闭 (esc)",
+    "zh-Hant": "關閉 (esc)",
+    "ja": "閉じる (esc)",
+    "ko": "닫기 (esc)",
+    "fr": "Fermer (esc)",
+    "de": "Schließen (esc)",
+    "es": "Cerrar (esc)"
+  },
+  "Today": {
+    "zh-Hans": "今天",
+    "zh-Hant": "今天",
+    "ja": "今日",
+    "ko": "오늘",
+    "fr": "Aujourd’hui",
+    "de": "Heute",
+    "es": "Hoy"
+  },
+  "Yesterday": {
+    "zh-Hans": "昨天",
+    "zh-Hant": "昨天",
+    "ja": "昨日",
+    "ko": "어제",
+    "fr": "Hier",
+    "de": "Gestern",
+    "es": "Ayer"
+  },
+  "{weekday}, {month} {day}": {
+    "zh-Hans": "{month}{day}日 {weekday}",
+    "zh-Hant": "{month}{day}日 {weekday}",
+    "ja": "{month}{day}日（{weekday}）",
+    "ko": "{month} {day}일 {weekday}",
+    "fr": "{weekday} {day} {month}",
+    "de": "{weekday}, {day}. {month}",
+    "es": "{weekday}, {day} de {month}"
+  },
+  "{month} {day}, {year}": {
+    "zh-Hans": "{year}年{month}{day}日",
+    "zh-Hant": "{year}年{month}{day}日",
+    "ja": "{year}年{month}{day}日",
+    "ko": "{year}년 {month} {day}일",
+    "fr": "{day} {month} {year}",
+    "de": "{day}. {month} {year}",
+    "es": "{day} de {month} de {year}"
+  },
+  "Monday": {
+    "zh-Hans": "星期一",
+    "zh-Hant": "星期一",
+    "ja": "月曜日",
+    "ko": "월요일",
+    "fr": "lundi",
+    "de": "Montag",
+    "es": "lunes"
+  },
+  "Tuesday": {
+    "zh-Hans": "星期二",
+    "zh-Hant": "星期二",
+    "ja": "火曜日",
+    "ko": "화요일",
+    "fr": "mardi",
+    "de": "Dienstag",
+    "es": "martes"
+  },
+  "Wednesday": {
+    "zh-Hans": "星期三",
+    "zh-Hant": "星期三",
+    "ja": "水曜日",
+    "ko": "수요일",
+    "fr": "mercredi",
+    "de": "Mittwoch",
+    "es": "miércoles"
+  },
+  "Thursday": {
+    "zh-Hans": "星期四",
+    "zh-Hant": "星期四",
+    "ja": "木曜日",
+    "ko": "목요일",
+    "fr": "jeudi",
+    "de": "Donnerstag",
+    "es": "jueves"
+  },
+  "Friday": {
+    "zh-Hans": "星期五",
+    "zh-Hant": "星期五",
+    "ja": "金曜日",
+    "ko": "금요일",
+    "fr": "vendredi",
+    "de": "Freitag",
+    "es": "viernes"
+  },
+  "Saturday": {
+    "zh-Hans": "星期六",
+    "zh-Hant": "星期六",
+    "ja": "土曜日",
+    "ko": "토요일",
+    "fr": "samedi",
+    "de": "Samstag",
+    "es": "sábado"
+  },
+  "Sunday": {
+    "zh-Hans": "星期日",
+    "zh-Hant": "星期日",
+    "ja": "日曜日",
+    "ko": "일요일",
+    "fr": "dimanche",
+    "de": "Sonntag",
+    "es": "domingo"
+  },
+  "Jan": {
+    "zh-Hans": "1月",
+    "zh-Hant": "1月",
+    "ja": "1月",
+    "ko": "1월",
+    "fr": "janv.",
+    "de": "Jan.",
+    "es": "ene"
+  },
+  "Feb": {
+    "zh-Hans": "2月",
+    "zh-Hant": "2月",
+    "ja": "2月",
+    "ko": "2월",
+    "fr": "févr.",
+    "de": "Feb.",
+    "es": "feb"
+  },
+  "Mar": {
+    "zh-Hans": "3月",
+    "zh-Hant": "3月",
+    "ja": "3月",
+    "ko": "3월",
+    "fr": "mars",
+    "de": "März",
+    "es": "mar"
+  },
+  "Apr": {
+    "zh-Hans": "4月",
+    "zh-Hant": "4月",
+    "ja": "4月",
+    "ko": "4월",
+    "fr": "avr.",
+    "de": "Apr.",
+    "es": "abr"
+  },
+  "May": {
+    "zh-Hans": "5月",
+    "zh-Hant": "5月",
+    "ja": "5月",
+    "ko": "5월",
+    "fr": "mai",
+    "de": "Mai",
+    "es": "may"
+  },
+  "Jun": {
+    "zh-Hans": "6月",
+    "zh-Hant": "6月",
+    "ja": "6月",
+    "ko": "6월",
+    "fr": "juin",
+    "de": "Juni",
+    "es": "jun"
+  },
+  "Jul": {
+    "zh-Hans": "7月",
+    "zh-Hant": "7月",
+    "ja": "7月",
+    "ko": "7월",
+    "fr": "juil.",
+    "de": "Juli",
+    "es": "jul"
+  },
+  "Aug": {
+    "zh-Hans": "8月",
+    "zh-Hant": "8月",
+    "ja": "8月",
+    "ko": "8월",
+    "fr": "août",
+    "de": "Aug.",
+    "es": "ago"
+  },
+  "Sep": {
+    "zh-Hans": "9月",
+    "zh-Hant": "9月",
+    "ja": "9月",
+    "ko": "9월",
+    "fr": "sept.",
+    "de": "Sept.",
+    "es": "sept"
+  },
+  "Oct": {
+    "zh-Hans": "10月",
+    "zh-Hant": "10月",
+    "ja": "10月",
+    "ko": "10월",
+    "fr": "oct.",
+    "de": "Okt.",
+    "es": "oct"
+  },
+  "Nov": {
+    "zh-Hans": "11月",
+    "zh-Hant": "11月",
+    "ja": "11月",
+    "ko": "11월",
+    "fr": "nov.",
+    "de": "Nov.",
+    "es": "nov"
+  },
+  "Dec": {
+    "zh-Hans": "12月",
+    "zh-Hant": "12月",
+    "ja": "12月",
+    "ko": "12월",
+    "fr": "déc.",
+    "de": "Dez.",
+    "es": "dic"
+  },
+  "Don't save": {
+    "zh-Hans": "不保存",
+    "zh-Hant": "不儲存",
+    "ja": "保存しない",
+    "ko": "저장 안 함",
+    "fr": "Ne pas garder",
+    "de": "Nicht speichern",
+    "es": "No guardar"
+  },
+  "Keep 1 day": {
+    "zh-Hans": "保留 1 天",
+    "zh-Hant": "保留 1 天",
+    "ja": "1 日間保存",
+    "ko": "1일 보관",
+    "fr": "1 jour",
+    "de": "1 Tag",
+    "es": "1 día"
+  },
+  "Keep 1 week": {
+    "zh-Hans": "保留 1 周",
+    "zh-Hant": "保留 1 週",
+    "ja": "1 週間保存",
+    "ko": "1주 보관",
+    "fr": "1 semaine",
+    "de": "1 Woche",
+    "es": "1 semana"
+  },
+  "Keep 1 month": {
+    "zh-Hans": "保留 1 个月",
+    "zh-Hant": "保留 1 個月",
+    "ja": "1 か月保存",
+    "ko": "1개월 보관",
+    "fr": "1 mois",
+    "de": "1 Monat",
+    "es": "1 mes"
+  },
+  "Keep 1 year": {
+    "zh-Hans": "保留 1 年",
+    "zh-Hant": "保留 1 年",
+    "ja": "1 年間保存",
+    "ko": "1년 보관",
+    "fr": "1 an",
+    "de": "1 Jahr",
+    "es": "1 año"
+  },
+  "Keep forever": {
+    "zh-Hans": "永久保留",
+    "zh-Hant": "永久保留",
+    "ja": "無期限に保存",
+    "ko": "계속 보관",
+    "fr": "Toujours",
+    "de": "Für immer",
+    "es": "Siempre"
+  },
+  "Version": {
+    "zh-Hans": "版本",
+    "zh-Hant": "版本",
+    "ja": "バージョン",
+    "ko": "버전",
+    "fr": "Version",
+    "de": "Version",
+    "es": "Versión"
+  },
+  "Check for updates": {
+    "zh-Hans": "检查更新",
+    "zh-Hant": "檢查更新",
+    "ja": "アップデートを確認",
+    "ko": "업데이트 확인",
+    "fr": "Rechercher",
+    "de": "Nach Updates suchen",
+    "es": "Buscar actualizaciones"
+  },
+  "Checking…": {
+    "zh-Hans": "正在检查…",
+    "zh-Hant": "正在檢查…",
+    "ja": "確認中…",
+    "ko": "확인 중…",
+    "fr": "Recherche…",
+    "de": "Suche …",
+    "es": "Buscando…"
+  },
+  "Updating…": {
+    "zh-Hans": "正在更新…",
+    "zh-Hant": "正在更新…",
+    "ja": "アップデート中…",
+    "ko": "업데이트 중…",
+    "fr": "Mise à jour…",
+    "de": "Aktualisiere …",
+    "es": "Actualizando…"
+  },
+  "Update to {v}": {
+    "zh-Hans": "更新到 {v}",
+    "zh-Hant": "更新到 {v}",
+    "ja": "{v} にアップデート",
+    "ko": "{v}(으)로 업데이트",
+    "fr": "Passer à la {v}",
+    "de": "Auf {v} aktualisieren",
+    "es": "Actualizar a {v}"
+  },
+  "Downloading…": {
+    "zh-Hans": "正在下载…",
+    "zh-Hant": "正在下載…",
+    "ja": "ダウンロード中…",
+    "ko": "다운로드 중…",
+    "fr": "Téléchargement…",
+    "de": "Lädt …",
+    "es": "Descargando…"
+  },
+  "Downloading… {p}%": {
+    "zh-Hans": "正在下载… {p}%",
+    "zh-Hant": "正在下載… {p}%",
+    "ja": "ダウンロード中… {p}%",
+    "ko": "다운로드 중… {p}%",
+    "fr": "Téléchargement… {p} %",
+    "de": "Lädt … {p} %",
+    "es": "Descargando… {p} %"
+  },
+  "Installing… Kotoba restarts by itself.": {
+    "zh-Hans": "正在安装… Kotoba 会自动重新启动。",
+    "zh-Hant": "正在安裝… Kotoba 會自動重新啟動。",
+    "ja": "インストール中… Kotoba は自動で再起動します。",
+    "ko": "설치 중… Kotoba가 자동으로 다시 시작됩니다.",
+    "fr": "Installation… Kotoba redémarre tout seul.",
+    "de": "Installiere … Kotoba startet von selbst neu.",
+    "es": "Instalando… Kotoba se reiniciará solo."
+  },
+  "The update did not go through: {e}": {
+    "zh-Hans": "更新未完成：{e}",
+    "zh-Hant": "更新未完成：{e}",
+    "ja": "アップデートできませんでした：{e}",
+    "ko": "업데이트하지 못했습니다: {e}",
+    "fr": "La mise à jour a échoué : {e}",
+    "de": "Das Update ist fehlgeschlagen: {e}",
+    "es": "La actualización no se completó: {e}"
+  },
+  "Could not reach GitHub.": {
+    "zh-Hans": "无法连接 GitHub。",
+    "zh-Hant": "無法連線 GitHub。",
+    "ja": "GitHub に接続できませんでした。",
+    "ko": "GitHub에 연결할 수 없습니다.",
+    "fr": "Impossible de joindre GitHub.",
+    "de": "GitHub ist nicht erreichbar.",
+    "es": "No se pudo conectar con GitHub."
+  },
+  "Up to date.": {
+    "zh-Hans": "已是最新版本。",
+    "zh-Hant": "已是最新版本。",
+    "ja": "最新です。",
+    "ko": "최신 버전입니다.",
+    "fr": "À jour.",
+    "de": "Auf dem neuesten Stand.",
+    "es": "Está al día."
+  },
+  "Release notes": {
+    "zh-Hans": "更新说明",
+    "zh-Hant": "更新說明",
+    "ja": "リリースノート",
+    "ko": "릴리스 노트",
+    "fr": "Notes de version",
+    "de": "Versionshinweise",
+    "es": "Notas de la versión"
+  },
+  "Release Notes": {
+    "zh-Hans": "更新说明",
+    "zh-Hant": "更新說明",
+    "ja": "リリースノート",
+    "ko": "릴리스 노트",
+    "fr": "Notes de version",
+    "de": "Versionshinweise",
+    "es": "Notas de la versión"
+  },
+  "Check automatically": {
+    "zh-Hans": "自动检查",
+    "zh-Hant": "自動檢查",
+    "ja": "自動的に確認",
+    "ko": "자동으로 확인",
+    "fr": "Rechercher automatiquement",
+    "de": "Automatisch suchen",
+    "es": "Buscar automáticamente"
+  },
+  "Once a day. Nothing is installed without you.": {
+    "zh-Hans": "每天一次。未经你同意不会安装任何东西。",
+    "zh-Hant": "每天一次。未經你同意不會安裝任何東西。",
+    "ja": "1 日 1 回。あなたの許可なくインストールはしません。",
+    "ko": "하루 한 번. 허락 없이 설치하지 않습니다.",
+    "fr": "Une fois par jour. Rien ne s’installe sans vous.",
+    "de": "Einmal am Tag. Nichts wird ohne dich installiert.",
+    "es": "Una vez al día. Nada se instala sin ti."
+  },
+  "{studio} presents": {
+    "zh-Hans": "{studio} 出品",
+    "zh-Hant": "{studio} 出品",
+    "ja": "{studio} 提供",
+    "ko": "{studio} 제공",
+    "fr": "{studio} présente",
+    "de": "{studio} präsentiert",
+    "es": "{studio} presenta"
+  },
+  "A studio by {jp} and {pingfan}.": {
+    "zh-Hans": "由 {jp} 和 {pingfan} 创立的工作室。",
+    "zh-Hant": "由 {jp} 和 {pingfan} 創立的工作室。",
+    "ja": "{jp} と {pingfan} のスタジオ。",
+    "ko": "{jp}와 {pingfan}의 스튜디오.",
+    "fr": "Un studio de {jp} et {pingfan}.",
+    "de": "Ein Studio von {jp} und {pingfan}.",
+    "es": "Un estudio de {jp} y {pingfan}."
+  },
+  "言葉 · Version {v}": {
+    "zh-Hans": "言葉 · 版本 {v}",
+    "zh-Hant": "言葉 · 版本 {v}",
+    "ja": "言葉 · バージョン {v}",
+    "ko": "言葉 · 버전 {v}",
+    "fr": "言葉 · Version {v}",
+    "de": "言葉 · Version {v}",
+    "es": "言葉 · Versión {v}"
+  },
+  "Could not save settings: {e}.": {
+    "zh-Hans": "无法保存设置：{e}。",
+    "zh-Hant": "無法儲存設定：{e}。",
+    "ja": "設定を保存できませんでした：{e}。",
+    "ko": "설정을 저장하지 못했습니다: {e}.",
+    "fr": "Impossible d’enregistrer les réglages : {e}.",
+    "de": "Einstellungen nicht gespeichert: {e}.",
+    "es": "No se pudieron guardar los ajustes: {e}."
+  },
+  "Could not change opening at login: {e}": {
+    "zh-Hans": "无法更改登录时打开：{e}",
+    "zh-Hant": "無法更改登入時打開：{e}",
+    "ja": "ログイン時に開く設定を変更できませんでした：{e}",
+    "ko": "로그인 시 열기를 바꾸지 못했습니다: {e}",
+    "fr": "Impossible de modifier l’ouverture à la session : {e}",
+    "de": "Öffnen beim Anmelden nicht geändert: {e}",
+    "es": "No se pudo cambiar la apertura al iniciar sesión: {e}"
+  },
+  "The history was not trimmed: {e}.": {
+    "zh-Hans": "未能精简历史记录：{e}。",
+    "zh-Hant": "未能精簡歷史記錄：{e}。",
+    "ja": "履歴を整理できませんでした：{e}。",
+    "ko": "기록을 정리하지 못했습니다: {e}.",
+    "fr": "L’historique n’a pas été réduit : {e}.",
+    "de": "Der Verlauf wurde nicht gekürzt: {e}.",
+    "es": "No se recortó el historial: {e}."
+  },
+  "The microphone did not start: {e}.": {
+    "zh-Hans": "麦克风未能启动：{e}。",
+    "zh-Hant": "麥克風未能啟動：{e}。",
+    "ja": "マイクを開始できませんでした：{e}。",
+    "ko": "마이크를 시작하지 못했습니다: {e}.",
+    "fr": "Le micro n’a pas démarré : {e}.",
+    "de": "Das Mikrofon ist nicht angegangen: {e}.",
+    "es": "El micrófono no se inició: {e}."
+  },
+  "Dictation is on a Mac only for now.": {
+    "zh-Hans": "目前只有 Mac 支持听写。",
+    "zh-Hant": "目前只有 Mac 支援聽寫。",
+    "ja": "音声入力は今のところ Mac 専用です。",
+    "ko": "받아쓰기는 지금은 Mac에서만 됩니다.",
+    "fr": "La dictée n’existe que sur Mac pour l’instant.",
+    "de": "Diktat gibt es vorerst nur auf dem Mac.",
+    "es": "Por ahora, el dictado solo funciona en Mac."
+  },
+  "Download a speech model first.": {
+    "zh-Hans": "请先下载一个语音模型。",
+    "zh-Hant": "請先下載一個語音模型。",
+    "ja": "先に音声モデルをダウンロードしてください。",
+    "ko": "먼저 음성 모델을 다운로드하세요.",
+    "fr": "Téléchargez d’abord un modèle vocal.",
+    "de": "Lade zuerst ein Sprachmodell.",
+    "es": "Descarga primero un modelo de voz."
+  },
+  "Download a post-processing model first.": {
+    "zh-Hans": "请先下载一个后处理模型。",
+    "zh-Hant": "請先下載一個後處理模型。",
+    "ja": "先に後処理モデルをダウンロードしてください。",
+    "ko": "먼저 후처리 모델을 다운로드하세요.",
+    "fr": "Téléchargez d’abord un modèle de post-traitement.",
+    "de": "Lade zuerst ein Modell für die Nachbearbeitung.",
+    "es": "Descarga primero un modelo de posprocesamiento."
+  },
+  "Kotoba may not use the microphone. Allow it here.": {
+    "zh-Hans": "Kotoba 无法使用麦克风。请在这里允许。",
+    "zh-Hant": "Kotoba 無法使用麥克風。請在這裡允許。",
+    "ja": "Kotoba はマイクを使えません。ここで許可してください。",
+    "ko": "Kotoba가 마이크를 사용할 수 없습니다. 여기에서 허용하세요.",
+    "fr": "Kotoba n’a pas accès au micro. Autorisez-le ici.",
+    "de": "Kotoba darf das Mikrofon nicht nutzen. Erlaube es hier.",
+    "es": "Kotoba no puede usar el micrófono. Permítelo aquí."
+  },
+  "No sound came in. Let Kotoba use the microphone.": {
+    "zh-Hans": "没有收到声音。请允许 Kotoba 使用麦克风。",
+    "zh-Hant": "沒有收到聲音。請允許 Kotoba 使用麥克風。",
+    "ja": "音が入ってきません。Kotoba にマイクの使用を許可してください。",
+    "ko": "소리가 들어오지 않았습니다. Kotoba가 마이크를 쓰도록 허용하세요.",
+    "fr": "Aucun son reçu. Autorisez Kotoba à utiliser le micro.",
+    "de": "Es kam kein Ton an. Erlaube Kotoba das Mikrofon.",
+    "es": "No llegó sonido. Permite a Kotoba usar el micrófono."
+  },
+  "The words are on the clipboard.": {
+    "zh-Hans": "文字已放到剪贴板上。",
+    "zh-Hant": "文字已放到剪貼板上。",
+    "ja": "文字はクリップボードにあります。",
+    "ko": "글이 클립보드에 있습니다.",
+    "fr": "Le texte est dans le presse-papiers.",
+    "de": "Der Text ist in der Zwischenablage.",
+    "es": "El texto está en el portapapeles."
+  },
+  "Allow Accessibility, and the words go where you type.": {
+    "zh-Hans": "允许“辅助功能”后，文字会直接写到你输入的地方。",
+    "zh-Hant": "允許「輔助使用」後，文字會直接寫到你輸入的地方。",
+    "ja": "アクセシビリティを許可すると、入力中の場所に文字が入ります。",
+    "ko": "손쉬운 사용을 허용하면 입력하던 곳에 글이 들어갑니다.",
+    "fr": "Autorisez l’accessibilité et le texte ira là où vous écrivez.",
+    "de": "Erlaube die Bedienungshilfen, dann landet der Text, wo du tippst.",
+    "es": "Permite la accesibilidad y el texto irá donde escribes."
+  },
+  "No microphone": {
+    "zh-Hans": "没有麦克风",
+    "zh-Hant": "沒有麥克風",
+    "ja": "マイクなし",
+    "ko": "마이크 없음",
+    "fr": "Pas de micro",
+    "de": "Kein Mikrofon",
+    "es": "Sin micrófono"
+  },
+  "Nothing heard": {
+    "zh-Hans": "没有听到内容",
+    "zh-Hant": "沒有聽到內容",
+    "ja": "聞き取れません",
+    "ko": "들린 내용 없음",
+    "fr": "Rien entendu",
+    "de": "Nichts gehört",
+    "es": "No se oyó nada"
+  },
+  "No sound": {
+    "zh-Hans": "没有声音",
+    "zh-Hant": "沒有聲音",
+    "ja": "音がありません",
+    "ko": "소리 없음",
+    "fr": "Aucun son",
+    "de": "Kein Ton",
+    "es": "Sin sonido"
+  },
+  "Nothing written": {
+    "zh-Hans": "没有写出内容",
+    "zh-Hant": "沒有寫出內容",
+    "ja": "何も書けませんでした",
+    "ko": "쓴 내용 없음",
+    "fr": "Rien d’écrit",
+    "de": "Nichts geschrieben",
+    "es": "No se escribió nada"
+  }
+}

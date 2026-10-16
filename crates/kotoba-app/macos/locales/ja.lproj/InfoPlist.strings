@@ -1,0 +1,2 @@
+/* The line the system shows when it asks for the microphone. */
+"NSMicrophoneUsageDescription" = "Kotoba は音声入力のあいだ耳を傾けます。話した内容はこの Mac で文字になり、どこにも送られません。";

@@ -1,0 +1,24 @@
+# macOS
+.DS_Store
+._*
+
+# Python, for scripts/dmg/background.py and scripts/dictate-sounds.py
+__pycache__/
+*.py[cod]
+
+# Kotoba's own data, in case KOTOBA_HOME ever points at the checkout.
+.kotoba/
+*.jsonl
+
+# Editors
+.idea/
+.vscode/
+*.swp
+*~
+
+# Rust. Build output at any depth: cargo run inside vendor/gpui-component,
+# which is a workspace of its own, builds there. Its lock is not ours either:
+# the one pin is the root Cargo.lock.
+target/
+/dist
+/vendor/*/Cargo.lock

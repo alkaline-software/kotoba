@@ -1,0 +1,2 @@
+/* The line the system shows when it asks for the microphone. */
+"NSMicrophoneUsageDescription" = "Kotoba는 받아쓰는 동안 듣습니다. 말한 내용은 이 Mac에서 글이 되며 어디로도 보내지지 않습니다.";

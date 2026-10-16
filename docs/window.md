@@ -1,0 +1,214 @@
+# The menu bar item and the settings window
+
+About `crates/kotoba-app/src/main.rs`, `settings.rs`, `controls.rs`, the
+window and permission parts of `kotoba.rs`, and the menu bar item in
+`sys.rs`.
+
+## Rules
+
+- Kotoba is a menu bar app: `LSUIElement` in every bundle, and
+  `sys::stay_in_menu_bar` at launch, because gpui makes every app a
+  regular one as it starts, over the bundle's own say.
+- There is one `Kotoba` for the process's life, held as a global
+  (`main.rs`). The settings window draws it while it is open; closing the
+  window drops only what belongs to a window (its fields, `detach`).
+  Anything dictation does runs on `cx.spawn`, never `spawn_in` a window.
+- A field belongs to a window, so the Preferences, Terms and Avoid fields are
+  made each time the window opens (`attach`). Nothing else holds them.
+- Opening the window from inside a `Kotoba` update is deferred
+  (`show_settings`): the window's build updates `Kotoba` too.
+- Reach a window's content through `cx.update_window`, not
+  `WindowHandle::update`, when keys or actions are dispatched in it: the
+  handle's update leases the root view, and a key dispatched through it
+  panicked ("cannot update Root while it is already being updated").
+- Every click the window swallows goes through `swallow_click`.
+- A sheet on a scrim that closes at a click occludes (`.occlude()` on
+  the sheet, not only on the scrim).
+- A hover style that changes the text's colour is set whatever state the
+  element is in, never under a `when`.
+- Permissions are asked when the person presses Allow, never on a timer.
+- A menu item with an image sets `preferredImageVisibility` to visible,
+  or on macOS 27 the image is not drawn.
+
+## The menu bar item
+
+`sys::menu_bar` puts the item at the menu bar's right: the icon's leaf as
+a template image (`assets/icons/menubar.png`, drawn by `make-icon.sh`),
+which the system tints. A left click opens the settings where they were
+left, and a right click (or Control and a click) shows its menu: the
+five sections, each with the rail's icon, then Quit Kotoba. General,
+App can swap the two clicks (Swap clicks, `app.bar_swap`) and hide the
+item (Show in menu bar, `app.bar_icon`); both change at once
+(`sys::set_menu_bar`). Opened
+again from Finder or Spotlight while running, Kotoba shows the settings
+(`on_reopen`), which is the way back to them with the item hidden.
+
+The item has no menu of its own: the button sends both clicks to an
+Objective-C target (`KotobaMenuTarget`, `define_class!`), which reads
+the click from the app's current event and either sends the settings
+down a channel to the app or sets the menu, clicks the button and takes
+the menu off again once it closes (`show_menu`). An item with a menu
+set would show it for either click. The menu's choices call the same
+target, each known by its tag.
+
+The menu's icons are the window's Tabler SVGs, drawn by resvg (the copy
+gpui builds) at one and two pixels a point into a template image, so
+the system tints them for the light, the dark and the highlighted line.
+An app built on the macOS 27 SDK has its menus' images hidden unless
+each item asks for its own (`preferredImageVisibility`, set by message
+where the system has it); without that the menu shows names alone.
+
+## The settings window
+
+The window is 820 by 620, its title bar clear with the traffic lights
+over the rail, the rail of sections at the left (`SECTIONS`) and the
+section at the right, fading in as the section changes. The section's
+name stands in the window's top, level with the traffic lights, as the
+Mac's own settings have it; the top is the app's to drag by
+(`drag_region`, with `app_owns_titlebar_drag`), and the rail drags it
+too. Every section fits the window without scrolling, and the page still
+scrolls, under the top, for what a fold opens or what is added later.
+
+**Groups and rows.** A section is groups of rows on cards (`group`,
+`card`, `line`), drawn to `docs/design.md`, which has the sizes.
+
+- **General** is three groups. Dictation: Shortcut (the key, More and
+  Reset; what is said of the key and Fn's guide fold open under the row,
+  across the card) and History (how long, and Show History). App: Theme,
+  Launch at login, Show in menu bar and Swap clicks. Permissions:
+  Microphone and Accessibility, asked here ahead of the first dictation,
+  so it does not stop to ask then. Each says whether it is given, and the
+  one thing to do when it is not: Allow (the system's own question), or
+  Open Settings once the microphone was refused, which only System
+  Settings undoes. The rail's General wears a dot while either is
+  missing.
+- **Launch at login** is the system's to keep (`SMAppService`, the
+  bundle this process runs from), so it is read from the system when the
+  window opens or comes back (`sys::login`) and never written to the
+  settings: the person may turn it off in Login Items. While the system
+  waits on the person there, Login Items stands before the switch. A
+  bare executable cannot be a login item; try it in the bundle.
+- **Models** is the Speech to Text and Post-processing groups, every
+  model on its group's card in one order that stays put as one is
+  chosen, the most capable first. The one in use is washed with the
+  accent; a click on a model that is here takes it up. Post-processing's
+  switch stands at its group's name, and with it off the group fades to
+  grey. Each lane folding to its chosen model was tried: what was folded
+  away was hidden.
+- **Customize** is Preferences, a field as tall as the window leaves
+  room for (`PREFERENCES_ROOM`, from the height drawn last), which
+  scrolls inside itself once what is typed is longer than it, and Words:
+  Terms and Avoid (the words never written), a row each with how many
+  there are and Edit. Each opens its list on a sheet (`render_words`): a
+  field with Add, several words at once, and the words under it as chips
+  with a × each, coming and going in motion. At the sheet's foot, Copy
+  All puts the list on the clipboard as one line, a comma and a space
+  between words, and Delete All, in the danger's colour, asks in its
+  place ("Delete all 5 words?", Cancel, Delete) before the words fade
+  out. A field that grew with what was typed, and the lists shown on the
+  page, were both tried: the page changed length as it was used.
+- **Updates** is one card: the version, with what a check found and its
+  button, and Check automatically. **About** is Emaki's title card.
+
+A notice (something refused, a model to download first) opens down from
+the section's title and closes after a while (`say`, `say_error`).
+
+History, Terms and Avoid open on sheets over the window
+(`over_settings`): smaller than it both ways, rising in as they fade in,
+fading out where they were.
+
+## Permissions
+
+The microphone: `sys::mic` reads `AVCaptureDevice`'s status, and
+`sys::ask_mic` asks. It is read again whenever the window comes back, so
+a change made in System Settings shows at once.
+
+Accessibility: the first press of Allow in a launch has the system ask
+(`sys::ask_trust`, `AXIsProcessTrustedWithOptions` with its prompt),
+which puts Kotoba in the list and offers to open it; the system asks
+only once in an app's life, so a later press opens Privacy & Security,
+Accessibility itself. Opening the list on the first press as well stood
+it under the system's question.
+
+The list is watched for the app's life (`watch_trust`). The system posts
+`com.apple.accessibility.api` when it changes, before the change is
+written, and can refuse a new event tap for a moment after a grant, so
+each notice is followed by reads over a few seconds (`refresh_trust`).
+Reading for only a second after one notice missed a grant, which then
+showed only after a second toggle. Each read makes the tap match: on
+when Accessibility is given (the old one switched back on, else a new
+one), and the row back to Allow when it was taken away. It is read
+again whenever the window comes back.
+
+On a first launch (no `config.json` yet) with either missing, the
+settings open on General. A dictation started with the microphone
+refused, or one that heard exact zeros, opens them there too.
+
+## Motion
+
+As Emaki's (`../emaki/docs/window.md`, Motion): a list over the window
+comes in over `MENU_IN`, rising into place, and goes over `MENU_OUT`;
+a choice that moves slides one plate (`segmented`); a switch's knob
+slides as its track fills with the accent (`switch`); what opens under a
+row runs its height up from nothing (`fold_under`); something small that
+comes and goes is played by `presence`; a sheet rises as it fades in.
+
+## Scroll routing
+
+`route_scroll` runs in the capture phase from a raw listener a
+zero-size canvas registers at paint. Of the scrollers that name
+themselves as they are drawn (`inner_scroller`, `kept_scroll`), the one
+under the pointer drawn last is on top. A gesture begun in one is its
+own wherever the pointer is carried; a sheet itself (`Inner::Wall`)
+keeps the wheel from what is under it, so a short sheet does not
+scroll the settings. The Preferences field names a wall over itself
+too, after the page's scroller, so a wheel on it scrolls the field and
+never the page.
+
+## Languages
+
+The window speaks English, Chinese (Simplified and Traditional, told
+apart by script or region), Japanese, Korean, French, German or
+Spanish. By default it follows the system: the first of its preferred
+languages that Kotoba has (`i18n::pick`), else English. Only the
+window's words change: what dictation hears and writes is the person's
+own.
+
+**The language list** stands at the right of General's title, on the
+window's top: System first, then each language by its flag and letters
+(`i18n::CHOICES`: 🇺🇸 EN, 🇨🇳 ZH-CN, 🇭🇰 ZH-HK for Traditional Chinese,
+🇯🇵 JA, 🇰🇷 KO, 🇫🇷 FR, 🇩🇪 DE, 🇪🇸 ES). A choice takes at once
+(`Kotoba::set_language`): the words are read from the table at every
+phrase, the menu bar menu is named again (`sys::retitle_menu`), and the
+window fades into the new language. On a Mac the choice is the app's
+own `AppleLanguages` in its defaults, the setting System Settings,
+Language & Region, Applications writes, so the two are one: what either
+set is what the list shows at the next launch (`i18n::chosen`), and the
+microphone's question is asked in it. System removes it. Elsewhere the
+settings keep it (`app.language`).
+
+English is the key. A phrase is written in the code in English inside
+`t("…")`, or `tf("… {name} …", …)` with blanks, or `count(n, "{n} word",
+"{n} words")`, and `crates/kotoba-app/locales/words.json` holds its
+other languages. Words that come from the core (the models' lines, the
+history's lengths) are put through `t` where they are drawn. A sentence
+with links in it (About) is woven from its translation (`weave`), so
+each language puts the links where its order wants them.
+
+`i18n`'s tests read the sources and fail on a phrase asked for and not
+in the table, one in the table no longer asked for, a language missing
+from a phrase, or a blank that differs from the English.
+
+The bundle declares the languages (`CFBundleLocalizations`), so System
+Settings, Language & Region, Applications, can give Kotoba its own; and
+`macos/locales/<lang>.lproj/InfoPlist.strings` puts the microphone's
+question in each, copied into the bundle by `dev-app.sh`, `make-app.sh`
+and `release-mac.sh`. The toolkit is told the language too
+(`gpui_component::set_locale`); the words of a field's menu were added
+to its table for the languages it lacked (`vendor/gpui-component/
+UPSTREAM.md`, 31).
+
+French and German run longest: a control holds them by growing to its
+word (`min_w`), never by a width its English fits. Check a change in
+French, German and Spanish (`KOTOBA_LANG`, `docs/probing.md`).
+

@@ -1,0 +1,35 @@
+[package]
+name = "kotoba-core"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+anyhow.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+dirs.workspace = true
+chrono.workspace = true
+# The update check and the installer download, and the models' downloads:
+# one small HTTPS client on rustls.
+ureq = { version = "2", default-features = false, features = ["tls"] }
+# A downloaded model checked against the hash it is published with.
+sha2 = "0.10"
+
+# Dictation (`dictate.rs`): transcribe.cpp (MIT, ggml's runtime, Metal
+# on Apple silicon) runs every model offered, Qwen3-ASR and Whisper
+# alike; and the microphone. A Mac's alone for now: transcribe.cpp
+# is built by CMake, which the Windows type check from a Mac cannot run.
+[target.'cfg(target_os = "macos")'.dependencies]
+transcribe-cpp = "0.4"
+cpal = "0.18"
+# Named for its include directory alone: build.rs compiles libllama for
+# the clean-up (`clean.rs`) against the ggml it installs, so the program
+# has one ggml. vendor/llama.cpp/UPSTREAM.md says why the two fit.
+transcribe-cpp-sys = "0.4"
+
+[build-dependencies]
+cc = "1"
+
+[dev-dependencies]
+tempfile = "3"
