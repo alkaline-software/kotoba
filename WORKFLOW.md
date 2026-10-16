@@ -110,7 +110,7 @@ git push origin HEAD:main            # fast-forward main; starts rust.yml
 gh run list --repo alkaline-software/kotoba --workflow rust --limit 1
 gh run watch <run-id> --repo alkaline-software/kotoba --exit-status
 git tag -a vX.Y.Z -m "Kotoba vX.Y.Z"
-git push origin vX.Y.Z
+git push origin refs/tags/vX.Y.Z
 ```
 
 The Mac images (step 5) can be built while it runs: the commit is the
@@ -330,6 +330,13 @@ so it is caught before the tag next time.
   anything is built, so step 3 says so. In Emaki's v0.2.3 it was found
   after the tag was out.
 
+- **`git push origin vX.Y.Z` stops with "src refspec vX.Y.Z matches
+  more than one"**: a branch has the tag's name (the work for v0.1.3 was
+  on a branch `v0.1.3`). Push the tag by its full name,
+  `git push origin refs/tags/vX.Y.Z`, as step 4 now does. Once the tag
+  exists, Git calls such a branch `heads/vX.Y.Z`, and a Git app may list
+  it as a second, unpublished branch. Name a release's branch apart
+  from its tag (`dev/vX.Y.Z`).
 - **"Cargo.toml says X but the tag is vY"**: the version and the tag
   disagree. Fix `Cargo.toml`, commit, redo the tag.
 - **"CHANGELOG.md has no section '## vX.Y.Z'"**: add it, commit, redo the tag.
