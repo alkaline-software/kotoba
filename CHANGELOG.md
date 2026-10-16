@@ -5,6 +5,12 @@ GitHub Release as its notes. Write it for the person installing the app, and
 keep it short: one line per change, a dozen lines at most, small fixes
 grouped into one. The reasoning belongs in AGENTS.md and docs/.
 
+## v0.1.2
+
+- F1 to F20 can be the shortcut on their own: press one in the shortcut field, or choose it under More. A note says when F1 to F12 on an Apple keyboard do what is printed on them instead.
+- More opens a list of kinds of key, One Modifier, Two Modifiers and F Keys, each with its keys beside it.
+- Only one Kotoba runs at a time: opening one quits any other, so the shortcut no longer works twice.
+
 ## v0.1.1
 
 - Kotoba no longer asks for Accessibility on its first launch. The system asks only when you press Allow in Settings, General.
