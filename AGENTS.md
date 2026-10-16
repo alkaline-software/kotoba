@@ -68,6 +68,8 @@ the full story.
   Accessibility is watched (`trust_changes`) and the tap starts the
   moment it is given; whether it is given is whether the tap can be
   made, never `AXIsProcessTrusted`, which a running process reads once.
+  A new tap is tried only after Allow or while `AXIsProcessTrusted`
+  says yes: a tap made unasked has the system ask.
   (`docs/window.md`, Permissions)
 - **A click the window swallows goes through `swallow_click`,** or the
   toolkit's text drag never ends.

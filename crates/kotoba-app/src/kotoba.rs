@@ -304,6 +304,21 @@ impl Kotoba {
             }
         })
         .detach();
+        // The settings closed, by the red button or ⌘W alike: what they
+        // held goes with them. A close asked for in code (⌘W) never asks
+        // `on_window_should_close`, so that alone left Kotoba in the Dock.
+        let me = cx.entity().downgrade();
+        cx.on_window_closed(move |cx, id| {
+            let me = me.clone();
+            cx.defer(move |cx| {
+                let _ = me.update(cx, |k, cx| {
+                    if k.window.is_some_and(|w| w.window_id() == id) {
+                        k.detach(cx);
+                    }
+                });
+            });
+        })
+        .detach();
         // Dictation's key tapped alone (Right ⌘, ⌥⌘): AppKit says which
         // side a modifier is on, and gpui does not. Elsewhere dictation
         // does not run and nothing watches.
@@ -830,15 +845,18 @@ impl Kotoba {
         // The tap is the answer. `AXIsProcessTrusted` is read once in a
         // process and kept: switched on in System Settings, it still said
         // no to the running Kotoba, which then never tried the tap, until
-        // it was opened again. Making the tap asks the system as it is now,
-        // and asks the person nothing.
+        // it was opened again. But a tap made while Kotoba is not yet in
+        // Accessibility's list has the system ask, so a new one is tried
+        // only once the person pressed Allow, or the system says it is
+        // given.
         if crate::sys::revive_outside_keys() {
             if !self.outside_on {
                 self.outside_given(cx);
             }
             return;
         }
-        let Some(mut keys) = crate::sys::outside_keys() else {
+        let keys = if self.ax_asked || crate::sys::trusted() { crate::sys::outside_keys() } else { None };
+        let Some(mut keys) = keys else {
             if self.outside_on {
                 self.outside_on = false;
                 cx.notify();
@@ -1719,11 +1737,6 @@ fn open_window(this: Entity<Kotoba>, cx: &mut App) {
                     k.attach(h, window, cx);
                 }
             });
-            let gone = this.downgrade();
-            window.on_window_should_close(cx, move |_, cx| {
-                let _ = gone.update(cx, |k, cx| k.detach(cx));
-                true
-            });
             cx.new(|cx| Root::new(this.clone(), window, cx))
         },
     );
@@ -1765,6 +1778,12 @@ fn probe(this: Entity<Kotoba>, handle: WindowHandle<Root>, cx: &mut App) {
                             }
                         });
                     }
+                    continue;
+                }
+                // `keys:<keystroke>`: a key pressed in the window, through
+                // its bindings (`keys:cmd-w`).
+                if let Some(key) = step.strip_prefix("keys:").and_then(|k| Keystroke::parse(k).ok()) {
+                    let _ = cx.update_window(handle.into(), move |_, window, cx| window.dispatch_keystroke(key, cx));
                     continue;
                 }
                 let k = k.clone();

@@ -16,7 +16,13 @@ window and permission parts of `kotoba.rs`, and the menu bar item in
 - Accessibility is given when the event tap can be made, never when
   `AXIsProcessTrusted` says so: a running process reads that once, and
   after a grant in System Settings it went on saying no until Kotoba
-  was opened again.
+  was opened again. A new tap is tried only after the person pressed
+  Allow, or while `AXIsProcessTrusted` says yes: a tap made before
+  Kotoba is in the list has the system ask, at launch, unasked.
+- What the window held goes when it is closed (`detach`, on
+  `on_window_closed`), never on `on_window_should_close`: ⌘W closes it
+  from code (`remove_window`), which never asks, and left Kotoba in the
+  Dock.
 - There is one `Kotoba` for the process's life, held as a global
   (`main.rs`). The settings window draws it while it is open; closing the
   window drops only what belongs to a window (its fields, `detach`).
@@ -146,10 +152,18 @@ Reading for only a second after one notice missed a grant, which then
 showed only after a second toggle. Each read is the tap itself: the old
 one switched back on, else a new one made, and Accessibility is given
 exactly when one of them takes; with neither, the row is back to Allow.
-Making a tap asks the system as it is now and asks the person nothing.
 `AXIsProcessTrusted` was asked first once, and kept the running Kotoba
 at "no" after the grant: the process reads it once. The paste goes by
 the tap's state too. It is read again whenever the window comes back.
+
+A tap made while Kotoba is not in the list has the system ask, as
+Allow does. Tried at launch on a Mac where Kotoba was never asked, that
+was the question with no press. So a new tap is made only once Allow
+was pressed in this launch (after the system's question, a refused tap
+asks nothing), or while `AXIsProcessTrusted` says yes; the first read
+in a launch is the system's as it is then. Switched on in System
+Settings in a launch where Allow was not pressed, the row shows it at
+the next press of Allow, or the next launch.
 
 **Coming back.** The system's question for the microphone and System
 Settings take the screen, and when they are done macOS hands it to the

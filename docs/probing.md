@@ -36,6 +36,8 @@ capture its own window without Screen Recording access.
 - `history`, `terms`, `avoid`, `close`: the sheets. On a list's sheet,
   `copyall` is Copy All, `deleteall` Delete All and `deleteyes` its
   confirmation.
+- `keys:<keystroke>`: a key pressed in the window, through its
+  bindings (`keys:cmd-w` closes it).
 - `wheel:<x>:<y>:<dy>`: the wheel turned there, in points from the
   window's top left, through the window as the mouse sends it.
 - `words:<terms|avoid>:<words>`: words typed into a list's field and
