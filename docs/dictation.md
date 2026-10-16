@@ -46,8 +46,9 @@ ten minutes unused (`release_idle`, on a one-minute clock in
 The key (`app.dictate_key`, ⌘⇧D unless the settings say another) or a
 tap of modifiers alone starts it (`toggle_dictation`):
 
-1. Two soft notes rising, and the microphone opened 300 ms later so the
-   chime is not heard. The pill comes down from the top of the screen.
+1. Two soft notes rising, played at 0.2 of full volume, and the
+   microphone opened 300 ms later so the chime is not heard. The pill
+   comes down from the top of the screen.
 2. Listening: the pill's bars follow the voice (`tick_dictation`).
 3. The key again: two notes falling; the pill's bars run as a wave while
    the model writes (`write_down`). What was heard is spelled with the
@@ -69,6 +70,31 @@ clipboard and the settings say so.
 other apps by the tap, which keeps Escape from that app only then.
 Escape while the model writes does nothing: stopping is the choice to
 keep the words.
+
+**The microphone** is the one the system has for input (System
+Settings, Sound, Input) unless General, Input, names one
+(`app.dictate_mic`, by Core Audio's id for it, which outlives unplugging
+it; `dictate::microphones`). One chosen and not connected is passed
+over for the system's, and the field says it is not connected. The
+system's input was all there was, and a microphone chosen in another
+app (a call's, a recorder's) is not the system's: Kotoba heard the
+Mac's own from across the room and the person had to speak loud. Each
+dictation writes to stderr which it listened to, with its channels and
+rate. `kotoba-core dictate mics` lists them by id.
+
+**The channels** that carry sound are averaged, and one twenty decibels
+or more under the loudest is left out (`to_whisper`): an audio
+interface gives its microphone on one input and next to nothing on the
+rest, and averaged with them the voice came in at a half or a quarter
+of its loudness.
+
+**A voice** (`speech_span`) is two and a half times its room's level,
+four times in a quiet room up to `CLEAR` (0.008), and over `QUIET`
+(0.003) whatever the room, for a quarter of a second in all. A fixed
+0.008 left a quiet microphone's voice, ten times its room, unheard, and
+cut its softer last words off; a quiet room's hiss swinging threefold
+must stay no voice. Checked with `kotoba-core dictate file` on WAVs of
+one voice at several loudnesses and channel counts, and of rooms alone.
 
 **A recording of exact zeros** is the system refusing the microphone,
 which it does with silence and not an error: the pill says "No sound"

@@ -43,7 +43,7 @@ icons and faces are is in `docs/look.md`; how the window works is in
 
 ## The window
 
-820 by 620. The rail at the left is 190 wide; the page has a margin of
+820 by 664. The rail at the left is 190 wide; the page has a margin of
 36 at either side. The section's name stands in the window's top (52
 tall), level with the traffic lights, 15 points semibold, as the Mac's
 own settings have it.

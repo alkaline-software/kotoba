@@ -24,6 +24,11 @@ pub struct AppConfig {
     /// How long the dictation's history keeps what it wrote, by
     /// `dictate::KEEPS`' keys.
     pub dictate_keep: String,
+    /// The microphone dictation listens to, by the system's id for it
+    /// (`dictate::Microphone`), and its name for when it is not there;
+    /// empty for the one the system has for input.
+    pub dictate_mic: String,
+    pub dictate_mic_name: String,
     /// Whether what dictation writes is cleaned up by a model after
     /// (`clean`), and by which, by `clean::MODELS`' keys.
     pub clean_on: bool,
@@ -59,6 +64,8 @@ impl Default for AppConfig {
             dictate_model: crate::dictate::DEFAULT_MODEL.into(),
             dictate_key: "secondary-shift-d".into(),
             dictate_keep: crate::dictate::DEFAULT_KEEP.into(),
+            dictate_mic: String::new(),
+            dictate_mic_name: String::new(),
             clean_on: false,
             clean_model: crate::clean::DEFAULT_MODEL.into(),
             clean_prompt: String::new(),

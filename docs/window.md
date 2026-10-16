@@ -77,7 +77,8 @@ where the system has it); without that the menu shows names alone.
 
 ## The settings window
 
-The window is 820 by 620, its title bar clear with the traffic lights
+The window is 820 by 664 (620 until General took Input, which it is
+grown by), its title bar clear with the traffic lights
 over the rail, the rail of sections at the left (`SECTIONS`) and the
 section at the right, fading in as the section changes. The section's
 name stands in the window's top, level with the traffic lights, as the
@@ -91,7 +92,11 @@ scrolls, under the top, for what a fold opens or what is added later.
 
 - **General** is three groups. Dictation: Shortcut (the key, More and
   Reset; what is said of the key and the guide for Fn or F1 to F12 fold
-  open under the row, across the card) and History (how long, and Show History). App: Theme,
+  open under the row, across the card), Input (the system's microphone,
+  by the name of the one it has, or one chosen; read again whenever the
+  window comes back and as its list opens, off the main thread, since a
+  Bluetooth one can be slow to answer) and History (how long, and Show
+  History). App: Theme,
   Launch at login, Show in menu bar and Swap clicks. Permissions:
   Microphone and Accessibility, asked here ahead of the first dictation,
   so it does not stop to ask then. Each says whether it is given, and the

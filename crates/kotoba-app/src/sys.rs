@@ -153,7 +153,9 @@ pub fn play_sound(wav: &'static [u8]) {
     }
     let data = NSData::with_bytes(wav);
     if let Some(sound) = NSSound::initWithData(NSSound::alloc(), &data) {
-        sound.setVolume(0.5);
+        // At 0.5 the chimes stood out over what else was playing; 0.35 and
+        // 0.28 were still more than wanted.
+        sound.setVolume(0.2);
         sound.play();
         PLAYING.with(|p| *p.borrow_mut() = Some(sound));
     }

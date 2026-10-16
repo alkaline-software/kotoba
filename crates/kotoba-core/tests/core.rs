@@ -26,11 +26,15 @@ fn isolated() -> (Home, std::sync::MutexGuard<'static, ()>) {
 fn dictation_audio_is_one_channel_at_sixteen_kilohertz() {
     let (_home, _guard) = isolated();
     use kotoba_core::dictate;
-    let stereo: Vec<f32> = (0..4800).flat_map(|i| [i as f32 / 4800.0, 0.0]).collect();
+    let stereo: Vec<f32> = (0..4800).flat_map(|i| [i as f32 / 4800.0, 0.3 - i as f32 / 16000.0]).collect();
     let mono = dictate::to_whisper(&stereo, 2, 48_000);
     assert_eq!(mono.len(), 1600);
-    assert!((mono[800] - 0.25).abs() < 0.01, "the channels averaged");
+    assert!((mono[800] - 0.325).abs() < 0.01, "the channels averaged: {}", mono[800]);
     assert_eq!(dictate::to_whisper(&[0.5, 0.5], 1, dictate::RATE), vec![0.5, 0.5]);
+    // A microphone on one input of four, the others near silent, comes in
+    // as loud as it is.
+    let four: Vec<f32> = (0..4800).flat_map(|i| [i as f32 / 4800.0, 0.0001, 0.0, -0.0001]).collect();
+    assert!((dictate::to_whisper(&four, 4, 48_000)[800] - 0.5).abs() < 0.01, "the quiet inputs left out");
     // A room's hum is no voice; a second of one in it is, found where it is.
     let rate = dictate::RATE as usize;
     let hum: Vec<f32> = (0..rate * 3).map(|i| 0.004 * ((i * 7919 % 1000) as f32 / 500.0 - 1.0)).collect();
@@ -42,9 +46,21 @@ fn dictation_audio_is_one_channel_at_sixteen_kilohertz() {
     }
     let span = dictate::speech_span(&said).unwrap();
     assert!(span.start < rate && span.start > rate / 2 && span.end > rate * 2 && span.end < rate * 5 / 2, "{span:?}");
-    let mut click = hum;
+    let mut click = hum.clone();
     click[rate..rate + 800].iter_mut().for_each(|s| *s = 0.5);
     assert!(dictate::speech_span(&click).is_none(), "a key pressed is too short");
+    // A quiet microphone: its voice well over its room is one, however
+    // quiet the two are.
+    let room: Vec<f32> = hum.iter().map(|s| s / 10.0).collect();
+    let mut soft = room.clone();
+    for (i, s) in soft[rate..rate * 2].iter_mut().enumerate() {
+        *s += 0.006 * (i as f32 * 0.12).sin();
+    }
+    assert!(dictate::speech_span(&room).is_none(), "a quiet microphone's room");
+    assert!(dictate::speech_span(&soft).is_some(), "a quiet microphone's voice");
+    // A quiet room's hiss rising and falling threefold is no voice.
+    let swing: Vec<f32> = (0..rate * 4).map(|i| 0.0012 * 1.732 * (1.0 + (0.5 + 0.5 * (i as f32 / rate as f32 * 2.1).sin()) * 2.0) * ((i * 7919 % 1000) as f32 / 500.0 - 1.0)).collect();
+    assert!(dictate::speech_span(&swing).is_none(), "a quiet room's hiss swinging");
 
     let mut wav = Vec::new();
     let data: Vec<u8> = [0i16, i16::MAX, -i16::MAX].iter().flat_map(|s| s.to_le_bytes()).collect();

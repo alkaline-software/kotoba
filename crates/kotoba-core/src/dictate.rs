@@ -324,12 +324,20 @@ pub fn download(m: &Model, got: &AtomicU64, stop: &AtomicBool) -> Result<(), Str
 }
 
 /// Interleaved samples at any rate, as one channel at `RATE`: the
-/// channels averaged, then taken at the new rate by straight lines
-/// between the old samples. Speech has nothing above 8 kHz worth the
-/// cost of a better filter.
+/// channels that carry sound averaged, then taken at the new rate by
+/// straight lines between the old samples. Speech has nothing above
+/// 8 kHz worth the cost of a better filter.
+///
+/// A channel twenty decibels or more under the loudest is left out: an
+/// audio interface gives its microphone on one input and next to nothing
+/// on the others, and averaged with them the voice came in at a half or
+/// a quarter of its loudness, too quiet to be taken for one.
 pub fn to_whisper(samples: &[f32], channels: usize, rate: u32) -> Vec<f32> {
     let channels = channels.max(1);
-    let mono: Vec<f32> = samples.chunks(channels).map(|c| c.iter().sum::<f32>() / c.len() as f32).collect();
+    let power: Vec<f32> = (0..channels).map(|c| samples.iter().skip(c).step_by(channels).map(|s| s * s).sum()).collect();
+    let most = power.iter().copied().fold(0.0, f32::max);
+    let live: Vec<usize> = (0..channels).filter(|c| power[*c] >= most * 0.01).collect();
+    let mono: Vec<f32> = samples.chunks(channels).map(|c| live.iter().filter_map(|i| c.get(*i)).sum::<f32>() / live.len() as f32).collect();
     if rate == RATE || mono.is_empty() {
         return mono;
     }
@@ -391,7 +399,10 @@ pub fn loudness(samples: &[f32]) -> f32 {
 ///
 /// A voice is a stretch well above the room's own level (the quietest
 /// tenth of the recording) and above `QUIET` whatever the room, lasting
-/// `SPOKEN` in all: a key pressed or a cough is shorter.
+/// `SPOKEN` in all: a key pressed or a cough is shorter. Well above is
+/// two and a half times a room's level, and in a quiet room four times,
+/// up to `CLEAR`: a quiet room's hiss rising and falling threefold was
+/// taken for a voice.
 pub fn speech_span(audio: &[f32]) -> Option<std::ops::Range<usize>> {
     let frame = RATE as usize * 3 / 100;
     let levels: Vec<f32> = audio.chunks(frame).map(loudness).collect();
@@ -401,7 +412,7 @@ pub fn speech_span(audio: &[f32]) -> Option<std::ops::Range<usize>> {
     let mut sorted = levels.clone();
     sorted.sort_by(|a, b| a.total_cmp(b));
     let room = sorted[sorted.len() / 10];
-    let over = (room * 2.5).max(QUIET);
+    let over = (room * 2.5).max((room * 4.0).min(CLEAR)).max(QUIET);
     let loud: Vec<usize> = levels.iter().enumerate().filter(|(_, l)| **l > over).map(|(i, _)| i).collect();
     if (loud.len() * frame) < (SPOKEN * RATE as f32) as usize {
         return None;
@@ -412,14 +423,38 @@ pub fn speech_span(audio: &[f32]) -> Option<std::ops::Range<usize>> {
     Some(start..end)
 }
 
-/// Under this no moment is a voice, however quiet the room.
-pub const QUIET: f32 = 0.008;
+/// Under this no moment is a voice, however quiet the room. Above it, a
+/// voice is told by how far it stands over its room: at 0.008 a quiet
+/// microphone's voice, ten times its room, was not one, and its softer
+/// words at the end were cut off.
+pub const QUIET: f32 = 0.003;
+/// Loud enough to be a voice over any quiet room.
+pub const CLEAR: f32 = 0.008;
 /// How long a voice is loud, in seconds, before it is taken for one.
 pub const SPOKEN: f32 = 0.25;
 
 
+/// A microphone the Mac has: the system's id for it, which outlives
+/// unplugging it and a restart, and its name.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Microphone {
+    pub id: String,
+    pub name: String,
+}
+
 #[cfg(target_os = "macos")]
-pub use engine::{release_idle, transcribe, unload, Recorder};
+pub use engine::{microphones, release_idle, system_microphone, transcribe, unload, Recorder};
+
+/// Elsewhere dictation has no microphone yet.
+#[cfg(not(target_os = "macos"))]
+pub fn microphones() -> Vec<Microphone> {
+    Vec::new()
+}
+
+#[cfg(not(target_os = "macos"))]
+pub fn system_microphone() -> Option<String> {
+    None
+}
 
 #[cfg(not(target_os = "macos"))]
 pub fn release_idle(_after: Duration) {}
@@ -437,7 +472,27 @@ mod engine {
 
     use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
 
-    use super::{loudness, path_of, pieces, speech_span, to_whisper, Model, RATE};
+    use super::{loudness, path_of, pieces, speech_span, to_whisper, Microphone, Model, RATE};
+
+    /// Every microphone the Mac has now, as the system lists them.
+    pub fn microphones() -> Vec<Microphone> {
+        let Ok(devices) = cpal::default_host().input_devices() else { return Vec::new() };
+        devices.filter_map(|d| Some(Microphone { id: d.id().ok()?.to_string(), name: d.to_string() })).collect()
+    }
+
+    /// The name of the microphone the system has for input (System
+    /// Settings, Sound, Input), when it has one.
+    pub fn system_microphone() -> Option<String> {
+        cpal::default_host().default_input_device().map(|d| d.to_string())
+    }
+
+    /// The microphone by its id (`Microphone::id`), or the system's when
+    /// it names none or that one is not connected.
+    fn microphone(id: &str) -> Option<cpal::Device> {
+        let host = cpal::default_host();
+        let chosen = (!id.is_empty()).then(|| host.input_devices().ok()?.find(|d| d.id().is_ok_and(|i| i.to_string() == id))).flatten();
+        chosen.or_else(|| host.default_input_device())
+    }
 
     /// The microphone, listened to until `finish`. The stream lives on a
     /// thread of its own, as the system's audio object must stay on the
@@ -449,9 +504,11 @@ mod engine {
     }
 
     impl Recorder {
-        /// Start listening. The first time, the system asks the person
-        /// whether Kotoba may use the microphone.
-        pub fn start() -> Result<Recorder, String> {
+        /// Start listening, on the microphone `mic` names (`microphone`).
+        /// The first time, the system asks the person whether Kotoba may
+        /// use the microphone.
+        pub fn start(mic: &str) -> Result<Recorder, String> {
+            let mic = mic.to_string();
             let (stop_tx, stop_rx) = mpsc::channel::<()>();
             let (done_tx, done_rx) = mpsc::channel();
             let (ready_tx, ready_rx) = mpsc::channel::<Result<(), String>>();
@@ -462,9 +519,11 @@ mod engine {
                 .spawn(move || {
                     let heard: Arc<Mutex<Vec<f32>>> = Arc::new(Mutex::new(Vec::new()));
                     let open = || -> Result<(cpal::Stream, usize, u32), String> {
-                        let device = cpal::default_host().default_input_device().ok_or("no microphone")?;
+                        let device = microphone(&mic).ok_or("no microphone")?;
                         let config = device.default_input_config().map_err(|e| e.to_string())?;
                         let (channels, rate) = (config.channels() as usize, config.sample_rate());
+                        // Which one, for whoever asks why it heard nothing.
+                        eprintln!("kotoba: listening to {device} ({channels} channels at {rate} Hz)");
                         let into = Arc::clone(&heard);
                         let meter = Arc::clone(&meter);
                         let take = move |data: &[f32]| {

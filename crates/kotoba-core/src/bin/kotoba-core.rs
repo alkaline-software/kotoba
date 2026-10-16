@@ -43,14 +43,21 @@ fn main() {
             }
         }
         "dictate" => {
-            // kotoba-core dictate models | download [key] | file <wav> [key]:
+            // kotoba-core dictate models | download [key] | file <wav> [key] | mics:
             // the dictation's models and post-processing's, one downloaded
             // as the settings window does it (a post-processing model by
-            // its key too), and the words in a WAV file (16-bit), as the
-            // app in front gets them. The microphone is the app's alone.
+            // its key too), the words in a WAV file (16-bit), as the app
+            // in front gets them, and the Mac's microphones by the ids
+            // `app.dictate_mic` takes. Listening is the app's alone.
             use kotoba_core::{clean, dictate};
             let key = |at: usize| args.get(at).map(String::as_str).unwrap_or(dictate::DEFAULT_MODEL).to_string();
             match args.get(1).map(String::as_str) {
+                Some("mics") => {
+                    let system = dictate::system_microphone();
+                    for m in dictate::microphones() {
+                        println!("{}\t{}{}", m.id, m.name, if system.as_ref() == Some(&m.name) { "  (the system's input)" } else { "" });
+                    }
+                }
                 Some("download") => {
                     let m = dictate::model(&key(2)).or_else(|| clean::model(&key(2))).expect("no such model");
                     let got = std::sync::Arc::new(std::sync::atomic::AtomicU64::new(0));

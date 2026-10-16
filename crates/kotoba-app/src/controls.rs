@@ -266,6 +266,10 @@ impl Kotoba {
         if rows.is_empty() {
             return;
         }
+        // One plugged in since the window came is in the list once read.
+        if what == PickFor::Mic {
+            self.read_mics(cx);
+        }
         self.pick_serial += 1;
         self.pick_gone = None;
         self.key_group = None;
@@ -298,6 +302,18 @@ impl Kotoba {
         cx.notify();
     }
 
+    /// The open list's choices read again, when it is `what`'s: what it
+    /// offers changed while it was open.
+    pub fn refresh_pick(&mut self, what: PickFor) {
+        if self.pick.as_ref().is_some_and(|p| p.what == what) {
+            let (rows, current) = self.pick_rows(what);
+            if let Some(p) = self.pick.as_mut() {
+                p.rows = Rc::new(rows);
+                p.current = current;
+            }
+        }
+    }
+
     /// The list is put away: it fades where it was, taking no click.
     pub fn close_pick(&mut self, cx: &mut Context<Self>) {
         if let Some(mut menu) = self.pick.take() {
@@ -327,6 +343,7 @@ impl Kotoba {
         match what {
             PickFor::DictateKey => self.set_dictate_key(key.to_string(), cx),
             PickFor::DictateKeep => self.set_dictate_keep(key, cx),
+            PickFor::Mic => self.set_mic(key, cx),
             PickFor::Language => self.set_language(key, cx),
         }
     }
@@ -347,6 +364,17 @@ impl Kotoba {
                 let system = PickRow { key: "system".into(), name: crate::i18n::t("System").into(), rule: false };
                 let rows = std::iter::once(system).chain(crate::i18n::CHOICES.iter().enumerate().map(|(ix, (code, flag, letters))| PickRow { key: code.to_string(), name: format!("{flag}  {letters}"), rule: ix == 0 })).collect();
                 (rows, self.cfg.app.language.clone())
+            }
+            // The system's, by the name of the one it has, then under a
+            // line each the Mac has.
+            PickFor::Mic => {
+                let system = PickRow { key: "system".into(), name: match &self.system_mic {
+                    Some(name) => crate::i18n::tf("System ({name})", &[("name", name)]),
+                    None => crate::i18n::t("System").to_string(),
+                }, rule: false };
+                let rows = std::iter::once(system).chain(self.mics.iter().enumerate().map(|(ix, m)| PickRow { key: m.id.clone(), name: m.name.clone(), rule: ix == 0 })).collect();
+                let current = if self.cfg.app.dictate_mic.is_empty() { "system".to_string() } else { self.cfg.app.dictate_mic.clone() };
+                (rows, current)
             }
             // Not saving, then the times, then always.
             PickFor::DictateKeep => {

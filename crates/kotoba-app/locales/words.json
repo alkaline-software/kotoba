@@ -278,6 +278,33 @@
     "de": "Wähle „Keine Aktion“.",
     "es": "Elige «No hacer nada»."
   },
+  "Input": {
+    "zh-Hans": "输入",
+    "zh-Hant": "輸入",
+    "ja": "入力",
+    "ko": "입력",
+    "fr": "Entrée",
+    "de": "Eingang",
+    "es": "Entrada"
+  },
+  "System ({name})": {
+    "zh-Hans": "跟随系统（{name}）",
+    "zh-Hant": "跟隨系統（{name}）",
+    "ja": "システム（{name}）",
+    "ko": "시스템({name})",
+    "fr": "Système ({name})",
+    "de": "System ({name})",
+    "es": "Sistema ({name})"
+  },
+  "{name} (not connected)": {
+    "zh-Hans": "{name}（未连接）",
+    "zh-Hant": "{name}（未連接）",
+    "ja": "{name}（未接続）",
+    "ko": "{name}(연결 안 됨)",
+    "fr": "{name} (non connecté)",
+    "de": "{name} (nicht verbunden)",
+    "es": "{name} (no conectado)"
+  },
   "History": {
     "zh-Hans": "历史记录",
     "zh-Hant": "歷史記錄",

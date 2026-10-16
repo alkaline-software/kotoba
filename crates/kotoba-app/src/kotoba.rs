@@ -27,7 +27,7 @@ use crate::ui::{binding_signs, MENU_OUT};
 
 /// The settings window's size, and the least it is dragged to.
 pub const SETTINGS_W: Pixels = px(820.);
-pub const SETTINGS_H: Pixels = px(620.);
+pub const SETTINGS_H: Pixels = px(664.);
 const SETTINGS_MIN: Size<Pixels> = Size { width: px(700.), height: px(460.) };
 
 /// The settings' sections, in the rail's order: key, name, icon.
@@ -123,6 +123,8 @@ pub enum PickFor {
     DictateKey,
     /// How long dictation's history keeps what it wrote.
     DictateKeep,
+    /// The microphone dictation listens to.
+    Mic,
     /// The window's language, at General's top.
     Language,
 }
@@ -289,6 +291,11 @@ pub struct Kotoba {
     pub dictate_key_focus: FocusHandle,
     /// What the notes under the key's row last said, drawn as they close.
     pub dictate_kept: RefCell<(String, &'static str, String)>,
+    /// The microphones the Mac has and the name of the one it has for
+    /// input, as last read (`read_mics`).
+    pub mics: Vec<dictate::Microphone>,
+    pub system_mic: Option<String>,
+    mic_reads: u32,
     /// What the Mac does with dictation's key besides, once asked (Fn's
     /// job, or `printed` for F1 to F12 doing what is printed on them):
     /// None for nothing.
@@ -436,6 +443,9 @@ impl Kotoba {
             dictate_kept: RefCell::new((String::new(), "", String::new())),
             key_use: None,
             key_reads: 0,
+            mics: Vec::new(),
+            system_mic: None,
+            mic_reads: 0,
             pick: None,
             pick_gone: None,
             pick_serial: 0,
@@ -486,6 +496,7 @@ impl Kotoba {
         }
         self.mic = crate::sys::mic();
         self.login = crate::sys::login();
+        self.read_mics(cx);
         cx.notify();
         let this = cx.entity();
         let open = self.window;
@@ -556,6 +567,7 @@ impl Kotoba {
                 this.read_key_use(cx);
                 this.mic = crate::sys::mic();
                 this.login = crate::sys::login();
+                this.read_mics(cx);
                 #[cfg(target_os = "macos")]
                 this.refresh_trust(cx);
             }
@@ -691,7 +703,8 @@ impl Kotoba {
             cx.notify();
             cx.spawn(async move |this, cx| {
                 cx.background_executor().timer(Duration::from_millis(300)).await;
-                let rec = cx.background_executor().spawn(async { dictate::Recorder::start() }).await;
+                let mic = this.update(cx, |this, _| this.cfg.app.dictate_mic.clone()).unwrap_or_default();
+                let rec = cx.background_executor().spawn(async move { dictate::Recorder::start(&mic) }).await;
                 let _ = this.update(cx, |this, cx| {
                     match rec {
                         Ok(rec) if matches!(this.dictation, Dictation::Starting) => {
@@ -1274,6 +1287,61 @@ impl Kotoba {
 
     /// How long dictation's history keeps what it wrote: set, and what
     /// is older let go of now, off the main thread.
+    /// The microphones read again, off the main thread: a Bluetooth one
+    /// can take a moment to answer. The list of them, open, takes in what
+    /// came.
+    pub fn read_mics(&mut self, cx: &mut Context<Self>) {
+        self.mic_reads += 1;
+        let n = self.mic_reads;
+        cx.spawn(async move |this, cx| {
+            let (mics, system) = cx.background_spawn(async { (dictate::microphones(), dictate::system_microphone()) }).await;
+            let _ = this.update(cx, |this, cx| {
+                if this.mic_reads != n || (this.mics == mics && this.system_mic == system) {
+                    return;
+                }
+                this.mics = mics;
+                this.system_mic = system;
+                this.refresh_pick(PickFor::Mic);
+                cx.notify();
+            });
+        })
+        .detach();
+    }
+
+    /// The microphone dictation listens to: `system` for the one the
+    /// system has for input, else one by its id.
+    pub fn set_mic(&mut self, id: &str, cx: &mut Context<Self>) {
+        let (id, name) = match self.mics.iter().find(|m| m.id == id) {
+            Some(m) => (m.id.clone(), m.name.clone()),
+            None => (String::new(), String::new()),
+        };
+        self.cfg.app.dictate_mic = id.clone();
+        self.cfg.app.dictate_mic_name = name.clone();
+        if let Err(e) = Config::edit(move |c| {
+            c.app.dictate_mic = id;
+            c.app.dictate_mic_name = name;
+        }) {
+            self.say_error(tf("Could not save settings: {e}.", &[("e", &e)]), cx);
+        }
+        cx.notify();
+    }
+
+    /// What the microphone's field says: the system's, by the name of the
+    /// one it has now, or the one chosen, said when it is not connected.
+    pub fn mic_label(&self) -> String {
+        let app = &self.cfg.app;
+        if app.dictate_mic.is_empty() {
+            return match &self.system_mic {
+                Some(name) => tf("System ({name})", &[("name", name)]),
+                None => t("System").to_string(),
+            };
+        }
+        match self.mics.iter().find(|m| m.id == app.dictate_mic) {
+            Some(m) => m.name.clone(),
+            None => tf("{name} (not connected)", &[("name", &app.dictate_mic_name)]),
+        }
+    }
+
     pub fn set_dictate_keep(&mut self, key: &str, cx: &mut Context<Self>) {
         let key = dictate::keep(key).0.to_string();
         self.cfg.app.dictate_keep = key.clone();
@@ -1693,6 +1761,7 @@ impl Kotoba {
                 }
             }
             "pick:dictate-keep" => self.pick_toggle(PickFor::DictateKeep, cx),
+            "pick:mic" => self.pick_toggle(PickFor::Mic, cx),
             "pick:language" => self.pick_toggle(PickFor::Language, cx),
             "dark" => self.set_appearance("dark", window, cx),
             "light" => self.set_appearance("light", window, cx),

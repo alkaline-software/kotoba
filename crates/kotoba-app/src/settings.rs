@@ -635,6 +635,14 @@ impl Kotoba {
                 .children(note.map(|n| div().px(px(14.)).child(n)))
                 .children(guide.map(|g| div().px(px(14.)).child(g)))
                 .into_any_element(),
+            // The microphone it listens to: the system's input unless one
+            // is chosen.
+            line(
+                t("Input"),
+                None,
+                div().w(CONTROL_W).child(self.settings_pick_h(PickFor::Mic, "mic", Some("icons/microphone.svg"), self.mic_label(), px(28.), cx)).into_any_element(),
+                theme_ref,
+            ),
             // How long what dictation writes is kept, and the way to it.
             line(
                 t("History"),

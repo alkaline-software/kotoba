@@ -45,7 +45,8 @@ capture its own window without Screen Recording access.
 - `words:<terms|avoid>:<words>`: words typed into a list's field and
   added, as Enter does (a comma for a space). `unword:<terms|avoid>`:
   the list's first word taken out.
-- `pick:dictate-key`, `pick:dictate-keep`: the lists that drop down.
+- `pick:dictate-key`, `pick:dictate-keep`, `pick:mic`: the lists that
+  drop down.
   `group:<one|two|f>`: on More's list, a kind's keys opened beside it.
 - `fstate:<0|1>`: F1 to F12 read as doing what is printed on them (0)
   or as standard function keys (1), in place of the Mac's setting.
