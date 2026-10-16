@@ -5,6 +5,11 @@ GitHub Release as its notes. Write it for the person installing the app, and
 keep it short: one line per change, a dozen lines at most, small fixes
 grouped into one. The reasoning belongs in AGENTS.md and docs/.
 
+## v0.1.1
+
+- Kotoba no longer asks for Accessibility on its first launch. The system asks only when you press Allow in Settings, General.
+- Closing the settings with ⌘W takes Kotoba out of the Dock, as the close button does.
+
 ## v0.1.0
 
 - Kotoba: dictation in any app on your Mac. Press the shortcut, speak, press it again, and the words are pasted where you type, your clipboard put back after. A pill at the top of the screen shows it listening.
