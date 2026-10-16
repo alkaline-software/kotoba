@@ -849,7 +849,7 @@ impl Kotoba {
     fn deliver_dictated(&mut self, words: &str, cx: &mut Context<Self>) {
         if self.window_active {
             self.pill_leave(cx);
-            let (handle, words, this) = (self.window, words.to_string(), cx.entity().downgrade());
+            let (handle, words) = (self.window, words.to_string());
             // Typed once this update is over: the keys pass through the
             // window's listeners, this one's among them.
             cx.defer(move |cx| {
@@ -862,9 +862,10 @@ impl Kotoba {
                     })
                     .ok()
                 });
+                // No field to take them: on the clipboard, and in the
+                // history, with nothing said over the settings.
                 if typed != Some(true) {
                     cx.write_to_clipboard(ClipboardItem::new_string(words));
-                    let _ = this.update(cx, |this, cx| this.say(t("The words are on the clipboard."), cx));
                 }
             });
             return;

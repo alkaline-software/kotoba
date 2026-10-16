@@ -62,8 +62,10 @@ posted, and what it held is put back 600 ms later unless something else
 was copied meanwhile. In Kotoba's own window the field with the keyboard
 takes them as typed (`dispatch_keystroke`, deferred until the update is
 over and sent through the window, never its leased root view). Without
-Accessibility, or with no field to take them, they are left on the
-clipboard and the settings say so.
+Accessibility they are left on the clipboard and the settings ask for
+it. In Kotoba's window with no field to take them, they are left on the
+clipboard with nothing said: they are in the history too, and a line
+saying so pushed the page down.
 
 **Escape** while the microphone starts or listens cancels with no chime
 (`cancel_dictation`): in Kotoba's window by a capture-phase action, in

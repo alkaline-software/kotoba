@@ -1619,15 +1619,6 @@
     "de": "Es kam kein Ton an. Erlaube Kotoba das Mikrofon.",
     "es": "No llegó sonido. Permite a Kotoba usar el micrófono."
   },
-  "The words are on the clipboard.": {
-    "zh-Hans": "文字已放到剪贴板上。",
-    "zh-Hant": "文字已放到剪貼板上。",
-    "ja": "文字はクリップボードにあります。",
-    "ko": "글이 클립보드에 있습니다.",
-    "fr": "Le texte est dans le presse-papiers.",
-    "de": "Der Text ist in der Zwischenablage.",
-    "es": "El texto está en el portapapeles."
-  },
   "Allow Accessibility, and the words go where you type.": {
     "zh-Hans": "允许“辅助功能”后，文字会直接写到你输入的地方。",
     "zh-Hant": "允許「輔助使用」後，文字會直接寫到你輸入的地方。",
