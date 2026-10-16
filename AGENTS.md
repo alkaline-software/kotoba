@@ -66,7 +66,9 @@ the full story.
   (`cx.spawn`, never `spawn_in` a window). (`docs/window.md`)
 - **Permissions are asked by the person's press, never on a timer.**
   Accessibility is watched (`trust_changes`) and the tap starts the
-  moment it is given. (`docs/window.md`, Permissions)
+  moment it is given; whether it is given is whether the tap can be
+  made, never `AXIsProcessTrusted`, which a running process reads once.
+  (`docs/window.md`, Permissions)
 - **A click the window swallows goes through `swallow_click`,** or the
   toolkit's text drag never ends.
 - **Every word a person sees goes through `i18n::t`** (or `tf`, `count`)

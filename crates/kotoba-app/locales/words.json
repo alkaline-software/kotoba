@@ -53,6 +53,42 @@
     "de": "Kotoba beenden",
     "es": "Salir de Kotoba"
   },
+  "Settings…": {
+    "zh-Hans": "设置…",
+    "zh-Hant": "設定…",
+    "ja": "設定…",
+    "ko": "설정…",
+    "fr": "Réglages…",
+    "de": "Einstellungen …",
+    "es": "Ajustes…"
+  },
+  "Hide Kotoba": {
+    "zh-Hans": "隐藏 Kotoba",
+    "zh-Hant": "隱藏 Kotoba",
+    "ja": "Kotoba を非表示",
+    "ko": "Kotoba 가리기",
+    "fr": "Masquer Kotoba",
+    "de": "Kotoba ausblenden",
+    "es": "Ocultar Kotoba"
+  },
+  "Hide Others": {
+    "zh-Hans": "隐藏其他",
+    "zh-Hant": "隱藏其他",
+    "ja": "ほかを非表示",
+    "ko": "기타 가리기",
+    "fr": "Masquer les autres",
+    "de": "Andere ausblenden",
+    "es": "Ocultar otros"
+  },
+  "Show All": {
+    "zh-Hans": "全部显示",
+    "zh-Hant": "全部顯示",
+    "ja": "すべてを表示",
+    "ko": "모두 보기",
+    "fr": "Tout afficher",
+    "de": "Alle einblenden",
+    "es": "Mostrar todo"
+  },
   "Dictation": {
     "zh-Hans": "听写",
     "zh-Hant": "聽寫",

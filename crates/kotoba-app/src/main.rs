@@ -23,7 +23,7 @@ mod ui;
 use gpui::*;
 use kotoba::{CloseWindow, Dictate, Escape, Kotoba, KEY_CONTEXT};
 
-actions!(kotoba_app, [Quit, OpenSettings]);
+actions!(kotoba_app, [Quit, OpenSettings, Hide, HideOthers, ShowAll]);
 
 /// The app's one `Kotoba`, for an action that reached no view.
 struct App_(Entity<Kotoba>);
@@ -34,6 +34,8 @@ fn key_bindings() -> Vec<KeyBinding> {
     let mut keys = vec![
         KeyBinding::new("secondary-q", Quit, None),
         KeyBinding::new("secondary-,", OpenSettings, None),
+        KeyBinding::new("secondary-h", Hide, None),
+        KeyBinding::new("secondary-alt-h", HideOthers, None),
         KeyBinding::new("secondary-w", CloseWindow, None),
         KeyBinding::new("escape", Escape, Some(KEY_CONTEXT)),
     ];
@@ -73,6 +75,26 @@ pub fn key_taken(binding: &str) -> Option<&'static str> {
 
 /// The menu bar item's menu: each section of the settings, with the
 /// rail's icon, then Quit.
+/// The app's menu at the screen's top, there while the settings window
+/// is open and Kotoba is in the Dock (`sys::in_dock`): the Mac's own
+/// choices for an app, in the language in use.
+pub fn app_menus() -> Vec<Menu> {
+    let t = i18n::t;
+    vec![Menu {
+        name: "Kotoba".into(),
+        disabled: false,
+        items: vec![
+            MenuItem::action(t("Settings…"), OpenSettings),
+            MenuItem::separator(),
+            MenuItem::action(t("Hide Kotoba"), Hide),
+            MenuItem::action(t("Hide Others"), HideOthers),
+            MenuItem::action(t("Show All"), ShowAll),
+            MenuItem::separator(),
+            MenuItem::action(t("Quit Kotoba"), Quit),
+        ],
+    }]
+}
+
 pub fn menu_lines() -> Vec<sys::MenuLine> {
     let icon = |path: &str| match assets::Assets.load(path) {
         Ok(Some(std::borrow::Cow::Borrowed(bytes))) => bytes,
@@ -111,6 +133,10 @@ fn main() {
         cx.set_global(App_(kotoba.clone()));
 
         cx.on_action(|_: &Quit, cx| cx.quit());
+        cx.on_action(|_: &Hide, cx| cx.hide());
+        cx.on_action(|_: &HideOthers, cx| cx.hide_other_apps());
+        cx.on_action(|_: &ShowAll, cx| cx.unhide_other_apps());
+        cx.set_menus(app_menus());
         cx.on_action(|_: &OpenSettings, cx| {
             if let Some(k) = cx.try_global::<App_>().map(|a| a.0.clone()) {
                 k.update(cx, |k, cx| k.show_settings(None, cx));

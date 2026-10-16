@@ -432,6 +432,7 @@ impl Kotoba {
     fn attach(&mut self, handle: WindowHandle<Root>, window: &mut Window, cx: &mut Context<Self>) {
         self.window = Some(handle);
         self.window_active = true;
+        crate::sys::in_dock(true);
         let clean_prompt = cx.new(|cx| {
             let mut s = TextareaState::new(window, cx).placeholder(t("Type in your preferences here in plain language."));
             s.set_value(self.cfg.app.clean_prompt.clone(), window, cx);
@@ -504,6 +505,7 @@ impl Kotoba {
 
     /// The window closed: what it held goes with it.
     fn detach(&mut self, cx: &mut Context<Self>) {
+        crate::sys::in_dock(false);
         self.window = None;
         self.window_active = false;
         self.dictate_key_rec = false;
@@ -781,7 +783,9 @@ impl Kotoba {
             });
             return;
         }
-        if !crate::sys::trusted() {
+        // The tap's state, not `AXIsProcessTrusted`, which a running
+        // process reads once (`refresh_trust`).
+        if !self.outside_on {
             cx.write_to_clipboard(ClipboardItem::new_string(words.to_string()));
             self.pill_say(t("Copied"), cx);
             self.say_error(t("Allow Accessibility, and the words go where you type."), cx);
@@ -823,22 +827,24 @@ impl Kotoba {
     /// seconds after each change the system posts (`watch_trust`).
     #[cfg(target_os = "macos")]
     pub fn refresh_trust(&mut self, cx: &mut Context<Self>) {
-        if !crate::sys::trusted() {
-            if self.outside_on {
-                self.outside_on = false;
-                cx.notify();
-            }
-            return;
-        }
-        if self.outside_on || crate::sys::revive_outside_keys() {
+        // The tap is the answer. `AXIsProcessTrusted` is read once in a
+        // process and kept: switched on in System Settings, it still said
+        // no to the running Kotoba, which then never tried the tap, until
+        // it was opened again. Making the tap asks the system as it is now,
+        // and asks the person nothing.
+        if crate::sys::revive_outside_keys() {
             if !self.outside_on {
                 self.outside_given(cx);
             }
             return;
         }
-        // The system can refuse a tap for a moment after the grant: the
-        // next read tries again.
-        let Some(mut keys) = crate::sys::outside_keys() else { return };
+        let Some(mut keys) = crate::sys::outside_keys() else {
+            if self.outside_on {
+                self.outside_on = false;
+                cx.notify();
+            }
+            return;
+        };
         self.outside_given(cx);
         cx.spawn(async move |this, cx| {
             use futures::StreamExt as _;
@@ -875,12 +881,26 @@ impl Kotoba {
         self.refresh_trust(cx);
     }
 
-    /// The tap is on.
+    /// The tap is on. Given after the person pressed Allow, from System
+    /// Settings, Kotoba comes back in front of it, where the next
+    /// permission is.
     #[cfg(target_os = "macos")]
     fn outside_given(&mut self, cx: &mut Context<Self>) {
         self.outside_on = true;
         self.send_outside_key();
+        if self.ax_asked {
+            self.come_back(cx);
+        }
         cx.notify();
+    }
+
+    /// The settings brought in front again, when they are open: after the
+    /// system's question or System Settings took the screen, macOS hands
+    /// it to the app used before, not back to Kotoba.
+    fn come_back(&mut self, cx: &mut Context<Self>) {
+        if self.window.is_some() {
+            self.show_settings(None, cx);
+        }
     }
 
     #[cfg(target_os = "macos")]
@@ -966,6 +986,7 @@ impl Kotoba {
                     let _ = answer.await;
                     let _ = this.update(cx, |this, cx| {
                         this.mic = crate::sys::mic();
+                        this.come_back(cx);
                         cx.notify();
                     });
                 })
@@ -1407,6 +1428,7 @@ impl Kotoba {
         crate::sys::set_own_language((choice != "system").then_some(choice.as_str()));
         crate::i18n::set(&choice);
         crate::sys::retitle_menu(&crate::menu_lines());
+        cx.set_menus(crate::app_menus());
         self.cfg.app.language = choice.clone();
         self.lang_serial += 1;
         if let Err(e) = Config::edit(move |c| c.app.language = choice) {

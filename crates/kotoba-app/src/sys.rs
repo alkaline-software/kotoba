@@ -1055,6 +1055,20 @@ pub fn stay_in_menu_bar() {
 #[cfg(not(target_os = "macos"))]
 pub fn stay_in_menu_bar() {}
 
+/// In the Dock and ⌘-Tab while the settings window is open, as any app
+/// with a window is, so it is found again once another app covers it;
+/// back to the menu bar alone when it closes.
+#[cfg(target_os = "macos")]
+pub fn in_dock(on: bool) {
+    use objc2::MainThreadMarker;
+    use objc2_app_kit::{NSApplication, NSApplicationActivationPolicy};
+    let Some(mtm) = MainThreadMarker::new() else { return };
+    let policy = if on { NSApplicationActivationPolicy::Regular } else { NSApplicationActivationPolicy::Accessory };
+    NSApplication::sharedApplication(mtm).setActivationPolicy(policy);
+}
+#[cfg(not(target_os = "macos"))]
+pub fn in_dock(_on: bool) {}
+
 /// Where the app stands with the microphone.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Mic {

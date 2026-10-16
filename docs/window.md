@@ -8,7 +8,15 @@ window and permission parts of `kotoba.rs`, and the menu bar item in
 
 - Kotoba is a menu bar app: `LSUIElement` in every bundle, and
   `sys::stay_in_menu_bar` at launch, because gpui makes every app a
-  regular one as it starts, over the bundle's own say.
+  regular one as it starts, over the bundle's own say. While the settings
+  window is open it is a regular app (`sys::in_dock`, from `attach` to
+  `detach`): in the Dock and ⌘-Tab, with its own menu (`app_menus`).
+  A menu bar app's window, once another app was in front, stood under
+  that app's windows with no way back to it but the menu bar.
+- Accessibility is given when the event tap can be made, never when
+  `AXIsProcessTrusted` says so: a running process reads that once, and
+  after a grant in System Settings it went on saying no until Kotoba
+  was opened again.
 - There is one `Kotoba` for the process's life, held as a global
   (`main.rs`). The settings window draws it while it is open; closing the
   window drops only what belongs to a window (its fields, `detach`).
@@ -135,10 +143,19 @@ The list is watched for the app's life (`watch_trust`). The system posts
 written, and can refuse a new event tap for a moment after a grant, so
 each notice is followed by reads over a few seconds (`refresh_trust`).
 Reading for only a second after one notice missed a grant, which then
-showed only after a second toggle. Each read makes the tap match: on
-when Accessibility is given (the old one switched back on, else a new
-one), and the row back to Allow when it was taken away. It is read
-again whenever the window comes back.
+showed only after a second toggle. Each read is the tap itself: the old
+one switched back on, else a new one made, and Accessibility is given
+exactly when one of them takes; with neither, the row is back to Allow.
+Making a tap asks the system as it is now and asks the person nothing.
+`AXIsProcessTrusted` was asked first once, and kept the running Kotoba
+at "no" after the grant: the process reads it once. The paste goes by
+the tap's state too. It is read again whenever the window comes back.
+
+**Coming back.** The system's question for the microphone and System
+Settings take the screen, and when they are done macOS hands it to the
+app used before, not to Kotoba. So once the microphone is answered, or
+Accessibility given after the person pressed Allow, the settings come
+back in front (`come_back`), where the next permission is.
 
 On a first launch (no `config.json` yet) with either missing, the
 settings open on General. A dictation started with the microphone
