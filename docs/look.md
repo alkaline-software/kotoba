@@ -1,69 +1,34 @@
 # Look
 
-About `crates/kotoba-app/src/look.rs`, `fonts.rs`, `assets.rs`, `ui.rs`,
-`assets/`, `themes/kotoba.json`, and the app icon.
+About `crates/kotoba-app/src/look.rs`, `fonts.rs`, `assets.rs`, `widgets.rs`, `assets/`, `themes/kotoba.json`, and the app icon.
 
 ## Rules
 
-- A button is `ui::choice_pill` (or `ui::small_pill` in a row): a pill
-  with an icon before its word. The toolkit's `Button` is not used for
-  one. `Press` says how it is drawn: quiet, the danger's for what cannot
-  be taken back, filled with the accent for what the page is for.
-- Every key the window shows is drawn by `ui::key_text`, on caps; a
-  hover's label goes through `ui::tip`, which does the same.
-- No call site names Tabler. A new icon is a file in `assets/icons/`
-  under the toolkit's file name and a line in `OWN` (`assets.rs`): a file
-  not named there draws nothing, and nothing says so.
-- Call `look::apply`, never `sync_system_appearance`, or a pinned
-  appearance flips with the system.
-- Paint the accent into both theme configs before the toolkit gets them
-  (`look::install`), so `Theme::change` keeps it on every switch.
-- Write settings through `Config::edit`, which writes a temp file and
-  renames it.
-- A clip in gpui is a rectangle: a ground that reaches a rounded card's
-  corner is rounded there itself.
+- A button is `widgets::choice_pill` (or `widgets::small_pill` in a row): a pill with an icon before its word. The toolkit's `Button` is not used for one. `Press` says how it is drawn: quiet, the danger's for what cannot be taken back, filled with the accent for what the page is for.
+- Every key the window shows is drawn by `widgets::key_text`, on caps; a hover's label goes through `widgets::tip`, which does the same.
+- No call site names Tabler. A new icon is a file in `assets/icons/` under the toolkit's file name; the folder is built in whole (`assets.rs`, by rust-embed), so there is no list to keep. A picture named in the code and not carried draws nothing, or the toolkit's own in its place, and nothing says so: a test fails on one (`every_named_picture_is_carried`).
+- Call `look::apply`, never `sync_system_appearance`, or a pinned appearance flips with the system.
+- Paint the accent into both theme configs before the toolkit gets them (`look::install`), so `Theme::change` keeps it on every switch.
+- Write settings through `Config::edit`, which writes a temp file and renames it.
+- A clip in gpui is a rectangle: a ground that reaches a rounded card's corner is rounded there itself.
+- A color that is not in the theme file or `look.rs` is a mistake.
 
 ## The palette
 
-Emaki's (`themes/kotoba.json`): near white with a trace of warmth in the
-light appearance, the darkest ground the page in the dark one. Kotoba's
-accent is green, as Emaki's is terracotta: `#519F5C`, the same chroma as
-terracotta in OKLCH, with a darker hover and press in the light
-appearance and a lighter hover in the dark. It is the only accent
-(`look::GREEN`): a menu bar app's one window has no need of a choice,
-and the setting Emaki has was taken out.
+The studio's neutrals (`themes/kotoba.json`): near white with a trace of warmth in the light appearance, the darkest ground the page in the dark one.
+
+The accent is green, the leaf's hue (147 in OKLCH) at the studio's lightness for an accent: 0.52 in the light appearance and 0.74 in the dark, its chroma eased to 0.084 as the studio's greens are, since a green at the full chroma is loud. White is drawn on the light shade (5.3 to 1) and the ink on the dark one (7.4 to 1). It is the only accent (`look::GREEN`): a menu bar app's one window has no need of a choice. Tried and dropped: a lighter green, `#519F5C` in both appearances, on which white read at 3.3 to 1.
 
 ## Icons
 
-Tabler's outline icons, as Emaki's, each under the name the toolkit or
-the app asks for, with `TABLER-LICENSE` beside them. The models' makers
-are LobeHub's marks (Qwen's, and OpenAI's for Whisper), with
-`makers/LOBEHUB-LICENSE`.
+Tabler's outline icons at a stroke of 1.75, each under the name the toolkit or the app asks for, with `TABLER-LICENSE` beside them. The models' makers are LobeHub's marks (Qwen's, and OpenAI's for Whisper), with `makers/LOBEHUB-LICENSE`.
 
 ## The app icon
 
-`scripts/icon/icon.html` is the source, drawn on a canvas in Emaki's
-icon's manner: the Alkaline Software organisation's cream ground, navy
-lines, an amber stroke and the violet spark, with green in place of
-terracotta. The subject is a leaf (葉, the second character of 言葉) that
-is also a speech bubble: tilted up to the right, its outline built from
-two arcs, its tail at the lower left a short point whose lower edge
-curves back into the leaf, and the leaf's tip at the upper right
-rounded by a small arc. Its veins are six upright sound bars of the
-first drawing's lengths, the fourth amber. Upright bars land on whole
-pixels, so 32 px stays crisp; below 24 px across only the three middle
-bars are drawn, navy, amber, navy. It was picked from three rounds of
-candidates (`VARIANT` in the page; 15 is the one in use), after a
-symmetric upright leaf read as too stiff and a 45 degree one with
-slanted veins as too far from the first drawing.
-`scripts/make-icon.sh` renders every size on its own pixels
-(`render.swift`, a windowless `WKWebView`), the `.icns` as the full
-opaque square and the PNGs as the rounded icon with its margin, and the
-menu bar's template image from the same page: the bubble leaf in black
-with four bars cut out.
+`scripts/icon/icon.html` is the source, drawn on a canvas in the studio's manner: the Alkaline Software cream ground, navy lines, an amber stroke and the violet spark, with the leaf's green as the product's own color. The subject is a leaf (葉, the second character of 言葉) that is also a speech bubble: tilted up to the right, its outline built from two arcs, its tail at the lower left a short point whose lower edge curves back into the leaf, and the leaf's tip at the upper right rounded by a small arc. Its veins are six upright sound bars of the first drawing's lengths, the fourth amber. Upright bars land on whole pixels, so 32 px stays crisp; below 24 px across only the three middle bars are drawn, navy, amber, navy. It was picked from three rounds of candidates (`VARIANT` in the page; 15 is the one in use), after a symmetric upright leaf read as too stiff and a 45 degree one with slanted veins as too far from the first drawing.
+
+`scripts/make-icon.sh` renders every size on its own pixels (`render.swift`, a windowless `WKWebView`) into `crates/kotoba-app/assets/icon`: the `.icns` as the full opaque square, since macOS 26 masks every app icon to its own rounded square and shows anything transparent as a gray border; the PNGs, for the window, as the rounded icon with its margin and shadow. The menu bar's template image comes from the same page, the bubble leaf in black with four bars cut out, which the system tints: `assets/icons/menubar.png` at 36 px (18 pt at 2x) and `menubar-1x.png` at 18. Open the page in a browser to see every size on one sheet. Change the drawing, run the script, rebuild, commit the assets.
 
 ## The faces
 
-Words are the system's face, as Emaki's chrome is. The app's name on
-About is in Optima, else Avenir Next (the Mac's own, never carried),
-else Belleza, carried under the SIL Open Font License (`fonts.rs`).
+Words are the system's face. The app's name on About is in Optima, else Avenir Next (the Mac's own, never carried), else Belleza, carried under the SIL Open Font License (`fonts.rs`).

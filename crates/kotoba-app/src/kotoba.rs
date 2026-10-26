@@ -23,7 +23,7 @@ use kotoba_core::config::Config;
 use kotoba_core::{dictate, update};
 
 use crate::i18n::{t, tf};
-use crate::ui::{binding_signs, MENU_OUT};
+use crate::widgets::{binding_signs, MENU_OUT};
 
 /// The settings window's size, and the least it is dragged to.
 pub const SETTINGS_W: Pixels = px(820.);
@@ -35,20 +35,16 @@ pub const SECTIONS: &[(&str, &str, &str)] = &[
     ("general", "General", "icons/settings.svg"),
     ("models", "Models", "icons/cpu.svg"),
     ("customize", "Customize", "icons/sparkles.svg"),
-    ("updates", "Updates", "icons/redo-2.svg"),
     ("about", "About", "icons/info.svg"),
 ];
 
 /// Dictation's two sounds, Emaki's own (`scripts/dictate-sounds.py`): a
 /// chime of two notes rising as it starts to listen, and falling as it
 /// stops. A short system sound was tried and read as the Mac's alert.
-#[cfg(target_os = "macos")]
 const DICTATE_START: &[u8] = include_bytes!("../assets/sounds/dictate-start.wav");
-#[cfg(target_os = "macos")]
 const DICTATE_STOP: &[u8] = include_bytes!("../assets/sounds/dictate-stop.wav");
 
 /// How many of the microphone's last moments the pill's bars show.
-#[cfg(target_os = "macos")]
 const MIC_BARS: usize = crate::pill::BARS;
 
 /// How long a notice stands at the head of the settings.
@@ -64,12 +60,10 @@ actions!(kotoba, [Dictate, Escape, CloseWindow]);
 
 /// Where dictation is: listening while the person speaks, then the model
 /// writing it down (`toggle_dictation`). Off a Mac it is never on.
-#[cfg_attr(not(target_os = "macos"), allow(dead_code))]
 pub enum Dictation {
     Off,
     /// The microphone asked for and not yet on.
     Starting,
-    #[cfg(target_os = "macos")]
     Listening(dictate::Recorder),
     Writing,
 }
@@ -251,7 +245,6 @@ pub struct Kotoba {
     // Dictation as it runs.
     pub dictation: Dictation,
     pub mic_levels: VecDeque<f32>,
-    #[cfg(target_os = "macos")]
     pub pill: Option<WindowHandle<crate::pill::Pill>>,
     pub tap_watch: dictate::TapWatch,
     /// Keys pressed in other apps are seen: Accessibility is given and
@@ -353,7 +346,7 @@ pub struct Kotoba {
 impl Kotoba {
     pub fn new(cx: &mut Context<Self>) -> Self {
         let mut cfg = Config::load();
-        cfg.app.language = crate::i18n::chosen(&cfg.app.language);
+        cfg.app.language = crate::i18n::chosen();
         let me = cx.entity().downgrade();
         // The key's field takes the next keys pressed in it. gpui runs
         // the bindings before an element's own key listener, so they are
@@ -384,7 +377,6 @@ impl Kotoba {
         // Dictation's key tapped alone (Right ⌘, ⌥⌘): AppKit says which
         // side a modifier is on, and gpui does not. Elsewhere dictation
         // does not run and nothing watches.
-        #[cfg(target_os = "macos")]
         {
             let mut keys = crate::sys::key_events();
             cx.spawn(async move |this, cx| {
@@ -418,7 +410,6 @@ impl Kotoba {
             cfg,
             dictation: Dictation::Off,
             mic_levels: VecDeque::new(),
-            #[cfg(target_os = "macos")]
             pill: None,
             tap_watch: dictate::TapWatch::default(),
             outside_on: false,
@@ -568,7 +559,6 @@ impl Kotoba {
                 this.mic = crate::sys::mic();
                 this.login = crate::sys::login();
                 this.read_mics(cx);
-                #[cfg(target_os = "macos")]
                 this.refresh_trust(cx);
             }
             cx.notify();
@@ -637,13 +627,8 @@ impl Kotoba {
     /// said where the person is. Nothing is done while the microphone is
     /// starting or the words are being written.
     pub fn toggle_dictation(&mut self, cx: &mut Context<Self>) {
-        if !dictate::AVAILABLE {
-            self.say(t("Dictation is on a Mac only for now."), cx);
-            return;
-        }
         match std::mem::replace(&mut self.dictation, Dictation::Off) {
             Dictation::Off => self.start_dictation(cx),
-            #[cfg(target_os = "macos")]
             Dictation::Listening(rec) => self.finish_dictation(rec, cx),
             other => self.dictation = other,
         }
@@ -656,14 +641,12 @@ impl Kotoba {
     pub fn cancel_dictation(&mut self, cx: &mut Context<Self>) -> bool {
         match self.dictation {
             Dictation::Starting => {}
-            #[cfg(target_os = "macos")]
             Dictation::Listening(..) => {}
             _ => return false,
         }
         // The recorder dropped closes the microphone; one still starting
         // is dropped when it comes (`start_dictation`).
         self.dictation = Dictation::Off;
-        #[cfg(target_os = "macos")]
         {
             crate::sys::take_escape(false);
             self.pill_leave(cx);
@@ -683,7 +666,6 @@ impl Kotoba {
             self.show_settings(Some("models"), cx);
             return;
         }
-        #[cfg(target_os = "macos")]
         {
             self.mic = crate::sys::mic();
             if self.mic == crate::sys::Mic::Refused {
@@ -727,7 +709,6 @@ impl Kotoba {
     }
 
     /// The pill drawn again while it listens, for the loudness.
-    #[cfg(target_os = "macos")]
     fn tick_dictation(&mut self, cx: &mut Context<Self>) {
         cx.spawn(async move |this, cx| loop {
             cx.background_executor().timer(Duration::from_millis(80)).await;
@@ -757,7 +738,6 @@ impl Kotoba {
     }
 
     /// The microphone off, and what it heard written down by the model.
-    #[cfg(target_os = "macos")]
     fn finish_dictation(&mut self, rec: dictate::Recorder, cx: &mut Context<Self>) {
         crate::sys::take_escape(false);
         crate::sys::play_sound(DICTATE_STOP);
@@ -767,7 +747,6 @@ impl Kotoba {
     /// What was heard (`heard`, called off the main thread) written down
     /// by the model, cleaned up when that is on, kept in the history, and
     /// put where the person is.
-    #[cfg(target_os = "macos")]
     pub fn write_down(&mut self, heard: impl FnOnce() -> Vec<f32> + std::marker::Send + 'static, cx: &mut Context<Self>) {
         let Some(model) = dictate::chosen(&self.cfg.app.dictate_model) else {
             return;
@@ -845,7 +824,6 @@ impl Kotoba {
     /// and what the clipboard held is put back once that app has read it.
     /// In Kotoba's own window the field with the keyboard takes them as
     /// if typed. Where neither can be, they wait on the clipboard.
-    #[cfg(target_os = "macos")]
     fn deliver_dictated(&mut self, words: &str, cx: &mut Context<Self>) {
         if self.window_active {
             self.pill_leave(cx);
@@ -888,7 +866,6 @@ impl Kotoba {
     }
 
     /// The pill goes back up, its window closing behind it.
-    #[cfg(target_os = "macos")]
     pub fn pill_leave(&mut self, cx: &mut Context<Self>) {
         if let Some(pill) = self.pill.take() {
             let _ = pill.update(cx, |pill, window, cx| pill.leave(window, cx));
@@ -896,7 +873,6 @@ impl Kotoba {
     }
 
     /// A few words in the pill, then it goes.
-    #[cfg(target_os = "macos")]
     fn pill_say(&mut self, words: &'static str, cx: &mut Context<Self>) {
         let Some(pill) = self.pill.take() else { return };
         let _ = pill.update(cx, |pill, _, cx| pill.set_phase(crate::pill::Phase::Said(words.into()), cx));
@@ -912,7 +888,6 @@ impl Kotoba {
     /// anew), and the settings saying it is not when it was taken away.
     /// Asked at launch, whenever the window comes back, and over a few
     /// seconds after each change the system posts (`watch_trust`).
-    #[cfg(target_os = "macos")]
     pub fn refresh_trust(&mut self, cx: &mut Context<Self>) {
         // The tap is the answer. `AXIsProcessTrusted` is read once in a
         // process and kept: switched on in System Settings, it still said
@@ -953,7 +928,6 @@ impl Kotoba {
     /// it is read again over a few seconds after each notice, so the keys
     /// work in other apps as soon as Kotoba is switched on, with no need
     /// to come back to it.
-    #[cfg(target_os = "macos")]
     fn watch_trust(&mut self, cx: &mut Context<Self>) {
         let mut changes = crate::sys::trust_changes();
         cx.spawn(async move |this, cx| {
@@ -974,7 +948,6 @@ impl Kotoba {
     /// The tap is on. Given after the person pressed Allow, from System
     /// Settings, Kotoba comes back in front of it, where the next
     /// permission is.
-    #[cfg(target_os = "macos")]
     fn outside_given(&mut self, cx: &mut Context<Self>) {
         self.outside_on = true;
         self.send_outside_key();
@@ -993,7 +966,6 @@ impl Kotoba {
         }
     }
 
-    #[cfg(target_os = "macos")]
     fn outside_event(&mut self, said: crate::sys::Outside, cx: &mut Context<Self>) {
         use crate::sys::Outside;
         match said {
@@ -1010,7 +982,6 @@ impl Kotoba {
     /// Dictation's key, when it is a key, for the tap over other apps to
     /// match.
     fn send_outside_key(&self) {
-        #[cfg(target_os = "macos")]
         {
             let key = &self.cfg.app.dictate_key;
             let stroke = if dictate::tap(key).is_some() {
@@ -1026,7 +997,6 @@ impl Kotoba {
     /// (`sys::key_events`): with dictation's key a tap of modifiers
     /// alone, the tap starts or stops it. Not while the key's field is
     /// taking a new key.
-    #[cfg(target_os = "macos")]
     fn key_event(&mut self, said: Option<u64>, cx: &mut Context<Self>) {
         if std::env::var_os("KOTOBA_TAP_DEBUG").is_some() {
             eprintln!("kotoba: key event {:?} held {:?} watch {:?}", said.map(|f| format!("{f:#x}")), said.map(dictate::held_from_mac), self.tap_watch);
@@ -1053,7 +1023,6 @@ impl Kotoba {
     /// list itself; opened on the first press too, the list stood under
     /// the system's question, two windows for one thing.
     pub fn allow_accessibility(&mut self, cx: &mut Context<Self>) {
-        #[cfg(target_os = "macos")]
         {
             if std::mem::replace(&mut self.ax_asked, true) {
                 cx.open_url(crate::sys::ACCESSIBILITY_SETTINGS_URL);
@@ -1068,7 +1037,6 @@ impl Kotoba {
     /// The system's question for the microphone when it was never asked;
     /// after a refusal only System Settings can change it.
     pub fn allow_microphone(&mut self, cx: &mut Context<Self>) {
-        #[cfg(target_os = "macos")]
         match crate::sys::mic() {
             crate::sys::Mic::Unasked => {
                 let answer = crate::sys::ask_mic();
@@ -1198,7 +1166,7 @@ impl Kotoba {
         // An F key may be pressed alone; any other key wants ⌘ or ⌥.
         let f = dictate::f_key(key).is_some();
         if (!f && !(m.platform || m.alt)) || m.control || m.function {
-            self.dictate_key_note = Some(if cfg!(target_os = "macos") { t("With ⌘ or ⌥.") } else { t("With Ctrl or Alt.") }.into());
+            self.dictate_key_note = Some(t("With ⌘ or ⌥.").into());
             cx.notify();
             return;
         }
@@ -1479,9 +1447,9 @@ impl Kotoba {
         self.words_leaving.push((list, ix, word, Instant::now(), self.dictated_serial));
         self.save_words(list, cx);
         cx.spawn(async move |this, cx| {
-            cx.background_executor().timer(crate::ui::FOLD_ANIM + Duration::from_millis(20)).await;
+            cx.background_executor().timer(crate::widgets::FOLD_ANIM + Duration::from_millis(20)).await;
             let _ = this.update(cx, |this, cx| {
-                this.words_leaving.retain(|(_, _, _, at, _)| at.elapsed() < crate::ui::FOLD_ANIM);
+                this.words_leaving.retain(|(_, _, _, at, _)| at.elapsed() < crate::widgets::FOLD_ANIM);
                 cx.notify();
             });
         })
@@ -1504,9 +1472,9 @@ impl Kotoba {
         }
         self.save_words(list, cx);
         cx.spawn(async move |this, cx| {
-            cx.background_executor().timer(crate::ui::FOLD_ANIM + Duration::from_millis(20)).await;
+            cx.background_executor().timer(crate::widgets::FOLD_ANIM + Duration::from_millis(20)).await;
             let _ = this.update(cx, |this, cx| {
-                this.words_leaving.retain(|(_, _, _, at, _)| at.elapsed() < crate::ui::FOLD_ANIM);
+                this.words_leaving.retain(|(_, _, _, at, _)| at.elapsed() < crate::widgets::FOLD_ANIM);
                 cx.notify();
             });
         })
@@ -1779,23 +1747,19 @@ impl Kotoba {
                     self.download_model(m, cx);
                 }
             }
-            #[cfg(target_os = "macos")]
             "dictate:pretend" => {
                 self.mic_levels.clear();
                 self.pill = crate::pill::open(cx);
                 self.dictation = Dictation::Listening(dictate::Recorder::pretend());
                 self.tick_dictation(cx);
             }
-            #[cfg(target_os = "macos")]
             "bar" => eprintln!("kotoba: bar {:?}", crate::sys::menu_bar_frame()),
-            #[cfg(target_os = "macos")]
             s if s.starts_with("menushot:") => crate::sys::shoot_menu(std::path::PathBuf::from(&s["menushot:".len()..])),
             s if s.starts_with("language:") => self.set_language(&s["language:".len()..], cx),
             s if s.starts_with("clean:") => self.set_clean_on(&s["clean:".len()..] == "on", cx),
             s if s.starts_with("barswap:") => self.set_bar_swap(&s["barswap:".len()..] == "on", cx),
             s if s.starts_with("login:") => self.set_login(&s["login:".len()..] == "on", cx),
             s if s.starts_with("baricon:") => self.set_bar_icon(&s["baricon:".len()..] == "show", cx),
-            #[cfg(target_os = "macos")]
             "away" => eprintln!("kotoba: trusted {} outside {} mic {:?}", crate::sys::trusted(), self.outside_on, crate::sys::mic()),
             s if s.starts_with("section:") => self.show_settings(SECTIONS.iter().find(|(k, _, _)| *k == &s["section:".len()..]).map(|(k, _, _)| *k), cx),
             // Words typed into a list's field and added, as Enter does:
@@ -1823,7 +1787,6 @@ impl Kotoba {
             s if s.starts_with("dictatekey:") => self.set_dictate_key(s["dictatekey:".len()..].to_string(), cx),
             // A 16-bit WAV file written down as the microphone's recording
             // is, and put where the person is.
-            #[cfg(target_os = "macos")]
             s if s.starts_with("dictate:file:") => {
                 let path = std::path::PathBuf::from(&s["dictate:file:".len()..]);
                 self.pill = crate::pill::open(cx);
@@ -1835,7 +1798,6 @@ impl Kotoba {
                     cx,
                 );
             }
-            #[cfg(target_os = "macos")]
             s if s.starts_with("pillshot:") => {
                 let path = std::path::PathBuf::from(&s["pillshot:".len()..]);
                 if let Some(pill) = self.pill {
@@ -1849,7 +1811,6 @@ impl Kotoba {
 }
 
 /// Why nothing was written: the system handed silence, or the model failed.
-#[cfg(target_os = "macos")]
 enum NotWritten {
     Silence,
     Failed(String),
@@ -1865,11 +1826,7 @@ fn now_secs() -> f64 {
 /// settings panel. Its content is the app's one `Kotoba`.
 fn open_window(this: Entity<Kotoba>, cx: &mut App) {
     let bounds = Bounds::centered(None, size(SETTINGS_W, SETTINGS_H), cx);
-    let titlebar = if cfg!(target_os = "macos") {
-        TitlebarOptions { title: Some("Kotoba".into()), appears_transparent: true, traffic_light_position: Some(point(px(17.), px(19.))) }
-    } else {
-        TitlebarOptions { title: Some("Kotoba".into()), appears_transparent: false, traffic_light_position: None }
-    };
+    let titlebar = TitlebarOptions { title: Some("Kotoba".into()), appears_transparent: true, traffic_light_position: Some(point(px(17.), px(19.))) };
     let opened = cx.open_window(
         WindowOptions {
             window_bounds: Some(WindowBounds::Windowed(bounds)),

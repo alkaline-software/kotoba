@@ -1,76 +1,73 @@
-//! Our own icons, over the set gpui-component ships.
+//! The pictures the window draws, over the set gpui-component ships.
 //!
-//! `Icon::new(IconName::…)` resolves through the app's `AssetSource`; this
-//! wrapper answers for the files under `assets/icons/` and hands everything
-//! else to the bundled set. The files are Tabler's outline icons (MIT,
-//! `TABLER-LICENSE` beside them), as Emaki's are, each under the name the
-//! toolkit or the app asks for (`close.svg` is Tabler's `x`); the models'
-//! makers' marks are LobeHub's (MIT). A file not named in `OWN` draws
-//! nothing, and nothing says so.
+//! `Icon::new(IconName::…)` and `Icon::default().path(…)` resolve through
+//! the app's `AssetSource`, and this one answers first for every file it
+//! carries, then hands the rest to the toolkit's own set:
+//!
+//! - `icons/`: Tabler's outline icons (MIT, `TABLER-LICENSE` beside them),
+//!   each under the name the toolkit or the app asks for (`close.svg` is
+//!   Tabler's `x`), so the icons the toolkit draws by itself are Tabler's
+//!   too; and the models' makers' marks, LobeHub's (MIT, `makers/`).
+//! - `icon/`: the app's own icon at each size `scripts/make-icon.sh` writes.
+//!
+//! The folders are built in whole, so a file put there is served: no list
+//! to keep beside them.
 
 use std::borrow::Cow;
 
 use gpui::{AssetSource, Result, SharedString};
 
-pub struct Assets;
+#[derive(rust_embed::RustEmbed)]
+#[folder = "assets"]
+#[include = "icons/**"]
+#[include = "icon/*.png"]
+pub struct Own;
 
-const OWN: &[(&str, &[u8])] = &[
-    ("icon/app-large.png", include_bytes!("../assets/icon/icon-512.png")),
-    ("icons/arrow-down.svg", include_bytes!("../assets/icons/arrow-down.svg")),
-    ("icons/arrow-up.svg", include_bytes!("../assets/icons/arrow-up.svg")),
-    ("icons/ban.svg", include_bytes!("../assets/icons/ban.svg")),
-    ("icons/case-sensitive.svg", include_bytes!("../assets/icons/case-sensitive.svg")),
-    ("icons/check.svg", include_bytes!("../assets/icons/check.svg")),
-    ("icons/chevron-down.svg", include_bytes!("../assets/icons/chevron-down.svg")),
-    ("icons/chevron-up.svg", include_bytes!("../assets/icons/chevron-up.svg")),
-    ("icons/chevrons-up-down.svg", include_bytes!("../assets/icons/chevrons-up-down.svg")),
-    ("icons/close.svg", include_bytes!("../assets/icons/close.svg")),
-    ("icons/copy.svg", include_bytes!("../assets/icons/copy.svg")),
-    ("icons/cpu.svg", include_bytes!("../assets/icons/cpu.svg")),
-    ("icons/device-desktop.svg", include_bytes!("../assets/icons/device-desktop.svg")),
-    ("icons/download.svg", include_bytes!("../assets/icons/download.svg")),
-    ("icons/external-link.svg", include_bytes!("../assets/icons/external-link.svg")),
-    ("icons/file-text.svg", include_bytes!("../assets/icons/file-text.svg")),
-    ("icons/github.svg", include_bytes!("../assets/icons/github.svg")),
-    ("icons/globe.svg", include_bytes!("../assets/icons/globe.svg")),
-    ("icons/history.svg", include_bytes!("../assets/icons/history.svg")),
-    ("icons/info.svg", include_bytes!("../assets/icons/info.svg")),
-    ("icons/key-command.svg", include_bytes!("../assets/icons/key-command.svg")),
-    ("icons/key-option.svg", include_bytes!("../assets/icons/key-option.svg")),
-    ("icons/key-return.svg", include_bytes!("../assets/icons/key-return.svg")),
-    ("icons/key-shift.svg", include_bytes!("../assets/icons/key-shift.svg")),
-    ("icons/key-tab.svg", include_bytes!("../assets/icons/key-tab.svg")),
-    ("icons/list-bullets.svg", include_bytes!("../assets/icons/list-bullets.svg")),
-    ("icons/logout.svg", include_bytes!("../assets/icons/logout.svg")),
-    ("icons/makers/openai.svg", include_bytes!("../assets/icons/makers/openai.svg")),
-    ("icons/makers/qwen.svg", include_bytes!("../assets/icons/makers/qwen.svg")),
-    ("icons/microphone.svg", include_bytes!("../assets/icons/microphone.svg")),
-    ("icons/moon.svg", include_bytes!("../assets/icons/moon.svg")),
-    ("icons/palette.svg", include_bytes!("../assets/icons/palette.svg")),
-    ("icons/pencil.svg", include_bytes!("../assets/icons/pencil.svg")),
-    ("icons/plus.svg", include_bytes!("../assets/icons/plus.svg")),
-    ("icons/redo-2.svg", include_bytes!("../assets/icons/redo-2.svg")),
-    ("icons/rotate.svg", include_bytes!("../assets/icons/rotate.svg")),
-    ("icons/settings.svg", include_bytes!("../assets/icons/settings.svg")),
-    ("icons/shield.svg", include_bytes!("../assets/icons/shield.svg")),
-    ("icons/sparkles.svg", include_bytes!("../assets/icons/sparkles.svg")),
-    ("icons/sun.svg", include_bytes!("../assets/icons/sun.svg")),
-    ("icons/trash.svg", include_bytes!("../assets/icons/trash.svg")),
-    ("icons/triangle-alert.svg", include_bytes!("../assets/icons/triangle-alert.svg")),
-    ("icons/wave-sine.svg", include_bytes!("../assets/icons/wave-sine.svg")),
-];
+pub struct Assets;
 
 impl AssetSource for Assets {
     fn load(&self, path: &str) -> Result<Option<Cow<'static, [u8]>>> {
-        if let Some((_, bytes)) = OWN.iter().find(|(p, _)| *p == path) {
-            return Ok(Some(Cow::Borrowed(bytes)));
+        if let Some(f) = Own::get(path) {
+            return Ok(Some(f.data));
         }
         gpui_component_assets::Assets.load(path)
     }
 
     fn list(&self, path: &str) -> Result<Vec<SharedString>> {
         let mut v = gpui_component_assets::Assets.list(path)?;
-        v.extend(OWN.iter().filter(|(p, _)| p.starts_with(path)).map(|(p, _)| SharedString::from(*p)));
+        v.extend(Own::iter().filter(|p| p.starts_with(path)).map(|p| SharedString::from(p.into_owned())));
         Ok(v)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Every picture the window names by path is carried: one that is not
+    /// draws nothing, or the toolkit's own in its place, and nothing says
+    /// so.
+    #[test]
+    fn every_named_picture_is_carried() {
+        let sources = [
+            include_str!("main.rs"),
+            include_str!("kotoba.rs"),
+            include_str!("settings.rs"),
+            include_str!("controls.rs"),
+            include_str!("widgets.rs"),
+            include_str!("sys.rs"),
+            include_str!("pill.rs"),
+        ];
+        let mut missing = Vec::new();
+        for src in sources {
+            for (at, _) in src.match_indices("\"icon") {
+                let rest = &src[at + 1..];
+                let path = &rest[..rest.find('"').unwrap_or(0)];
+                if (path.starts_with("icons/") || path.starts_with("icon/")) && (path.ends_with(".svg") || path.ends_with(".png")) && Own::get(path).is_none() {
+                    missing.push(path.to_string());
+                }
+            }
+        }
+        assert!(missing.is_empty(), "not in assets/: {missing:?}");
     }
 }

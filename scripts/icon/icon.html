@@ -75,7 +75,7 @@ const CX = 53, CY = 48, TILT = -Math.PI / 4, L = 37, WU = 12, WL = 30, STALK = 1
 const MID = (WL - WU) / 2;
 
 // the circle of the arc through (-L, 0) and (L, 0) that leaves the line by
-// s, downward when s is positive: its centre's y and its radius
+// s, downward when s is positive: its center's y and its radius
 function circle(s) {
   const r = (L * L + s * s) / (2 * Math.abs(s));
   return { c: s > 0 ? s - r : s + r, r };
@@ -175,7 +175,7 @@ const ICONS = [
   }
 ];
 
-// four-point AI spark centred on (cx, cy)
+// four-point AI spark centered on (cx, cy)
 function sparkle(ctx, cx, cy, r) {
   const k = r * 0.2;
   ctx.beginPath();
@@ -355,31 +355,31 @@ const CANDIDATES = (() => {
   // a point of the frame in the 100-unit box
   const toBox = (s, x, y) => [s.cx + x * Math.cos(s.tilt) - y * Math.sin(s.tilt), s.cy + x * Math.sin(s.tilt) + y * Math.cos(s.tilt)];
 
-  // x moved so that a bar of width w centred on it starts on a whole pixel
+  // x moved so that a bar of width w centered on it starts on a whole pixel
   function snapX(ctx, x, w) {
     const m = ctx.getTransform();
     return (Math.round((x - w / 2) * m.a + m.e) - m.e) / m.a + w / 2;
   }
 
-  // Upright bars. `bars` lists each bar's x off the leaf's centre and its
-  // share of the room there; `centre(x)` gives the y it is centred on.
+  // Upright bars. `bars` lists each bar's x off the leaf's center and its
+  // share of the room there; `center(x)` gives the y it is centered on.
   // With `pattern`, a share is of the middle bar's height, not of the room
   // at the bar, so the heights keep their rhythm across the leaf.
   // Below 24 px across, more than three bars run together: the middle
   // three are drawn, a pixel wide and three pixels apart.
-  function drawBars(ctx, s, bars, w, gap, centre, colour, pattern = false) {
+  function drawBars(ctx, s, bars, w, gap, center, color, pattern = false) {
     const k = ctx.getTransform().a;
     if (k * 100 < 24 && bars.length > 3) {
-      const m = Math.floor(bars.length / 2), c = colour;
+      const m = Math.floor(bars.length / 2), c = color;
       bars = [-1, 0, 1].map(j => [j * 3 / k, bars[m + j][1]]);
-      w = 1 / k; colour = i => c(m - 1 + i);
+      w = 1 / k; color = i => c(m - 1 + i);
     }
-    const [x0] = toBox(s, s.mid || 0, 0), full = room(s, x0, centre(x0)) - gap;
+    const [x0] = toBox(s, s.mid || 0, 0), full = room(s, x0, center(x0)) - gap;
     bars.forEach(([dx, share], i) => {
-      const x = x0 + dx, y = centre(x), fit = room(s, x, y) - gap;
+      const x = x0 + dx, y = center(x), fit = room(s, x, y) - gap;
       const h = pattern ? Math.min(share * full, fit) : fit * share;
       const xs = snapX(ctx, x, w);
-      stroke(ctx, [[xs, y - h], [xs, y + h]], colour(i), w);
+      stroke(ctx, [[xs, y - h], [xs, y + h]], color(i), w);
     });
   }
 
@@ -471,10 +471,10 @@ const CANDIDATES = (() => {
   // base with its outer edge going on from the upper arc.
   const SIX = [[-16, 4.5], [-8, 9.5], [0, 6.5], [8, 12], [16, 8], [23.5, 3.5]];
   const SIX_TEMPLATE = [[-14, 6], [-2, 11], [10, 7.5], [21, 3.5]];
-  // Bars at d along the first design's tilt from x = 50, centred on y = 47.
+  // Bars at d along the first design's tilt from x = 50, centered on y = 47.
   // Below 24 px across, the three around the middle, a pixel wide and three
   // pixels apart.
-  function sixBars(ctx, bars, w, colour) {
+  function sixBars(ctx, bars, w, color) {
     const k = ctx.getTransform().a, at = d => 50 + d * Math.cos(-0.36);
     let list = bars.map(([d, h], i) => [at(d), h, i]);
     if (k * 100 < 24) {
@@ -484,7 +484,7 @@ const CANDIDATES = (() => {
     }
     for (const [x, h, i] of list) {
       const xs = snapX(ctx, x, w);
-      stroke(ctx, [[xs, 47 - h], [xs, 47 + h]], colour(i), w);
+      stroke(ctx, [[xs, 47 - h], [xs, 47 + h]], color(i), w);
     }
   }
   const sixLeaf = tail => arcLeaf({ cx: 53.5, cy: 44.6, tilt: -0.36, l: 35, wu: 21, wl: 21, tail });

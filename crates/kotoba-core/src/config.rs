@@ -18,7 +18,7 @@ pub struct AppConfig {
     /// The dictation's model, by `dictate::MODELS`' keys: one at a time.
     pub dictate_model: String,
     /// The key that starts and stops dictation, as gpui writes a binding
-    /// (`secondary-shift-d`: ⌘⇧D, Ctrl off a Mac), or modifiers alone as
+    /// (`secondary-shift-d`: ⌘⇧D), or modifiers alone as
     /// `tap:<key>` (`dictate::TAPS`).
     pub dictate_key: String,
     /// How long the dictation's history keeps what it wrote, by

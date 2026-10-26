@@ -1,10 +1,8 @@
 name: rust
 
-# The app and its core, on every OS the app ships for. Dictation runs on a
-# Mac alone, but the code is gated so Windows and Linux build, and this is
-# what keeps them building. Tests and a build on every push and pull
-# request; installers are release.yml's job and only run on a tag, because
-# a GPUI build is slow.
+# The app and its core on a clean Mac: tests and a build on every push and
+# pull request. The disk images are release.yml's job and only run on a
+# tag, because a GPUI build is slow.
 on:
   push:
     branches: [main]
@@ -19,32 +17,16 @@ env:
 
 jobs:
   rust:
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [macos-latest, windows-latest, ubuntu-24.04]
-    runs-on: ${{ matrix.os }}
+    runs-on: macos-latest
     steps:
       - uses: actions/checkout@v7
 
       - uses: dtolnay/rust-toolchain@stable
 
-      # Everything gpui links against on Linux. The list is zed's own
-      # (script/linux), minus the audio and the editor-only parts.
-      - name: Linux system libraries
-        if: runner.os == 'Linux'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends \
-            build-essential clang cmake pkg-config libssl-dev libzstd-dev \
-            libfontconfig-dev libfreetype-dev libwayland-dev libx11-xcb-dev \
-            libxkbcommon-dev libxkbcommon-x11-dev libxcb1-dev \
-            libvulkan-dev libvulkan1 mesa-vulkan-drivers libasound2-dev
-
       - uses: Swatinem/rust-cache@v2
         with:
-          # One cache per OS, shared across branches so a PR starts warm.
-          shared-key: rust-${{ matrix.os }}
+          # Shared across branches so a PR starts warm.
+          shared-key: rust-macos
 
       - name: Tests
         run: cargo test -p kotoba-core --locked
@@ -55,8 +37,8 @@ jobs:
       - name: Build the app
         run: cargo build -p kotoba-app -p kotoba-core --locked
 
-      - name: The window's languages
-        run: cargo test -p kotoba-app --locked i18n
+      - name: The window's languages and pictures
+        run: cargo test -p kotoba-app --locked
 
       - name: The CLI runs
         run: cargo run -p kotoba-core --locked -- dictate models

@@ -2,7 +2,7 @@
 //! is. The app's name, on About, is in a light, elegant sans with flared
 //! strokes: Optima, else Avenir Next, both the Mac's own and never
 //! carried; with neither, Belleza (etunni/belleza), a free face of the
-//! same kind under the SIL Open Font License, carried with its licence
+//! same kind under the SIL Open Font License, carried with its license
 //! beside it in `assets/fonts`.
 
 use gpui::{App, Global, SharedString};

@@ -7,11 +7,6 @@
 //! anywhere. What the microphone hears is kept in memory while the person
 //! speaks and handed to the model when they stop; the words come back in
 //! one piece.
-//!
-//! Only on a Mac for now (`AVAILABLE`): transcribe.cpp is C++ built by
-//! CMake, which the Windows type check made from a Mac cannot build, and
-//! nothing here has been tried elsewhere. Elsewhere the models are listed
-//! and nothing records.
 
 use std::fs;
 use std::io::{Read, Write};
@@ -22,9 +17,6 @@ use std::time::Duration;
 use sha2::{Digest, Sha256};
 
 use crate::paths;
-
-/// Whether this build can record and transcribe.
-pub const AVAILABLE: bool = cfg!(target_os = "macos");
 
 /// The sample rate every model offered takes.
 pub const RATE: u32 = 16_000;
@@ -442,27 +434,13 @@ pub struct Microphone {
     pub name: String,
 }
 
-#[cfg(target_os = "macos")]
 pub use engine::{microphones, release_idle, system_microphone, transcribe, unload, Recorder};
 
 /// Elsewhere dictation has no microphone yet.
-#[cfg(not(target_os = "macos"))]
-pub fn microphones() -> Vec<Microphone> {
-    Vec::new()
-}
 
-#[cfg(not(target_os = "macos"))]
-pub fn system_microphone() -> Option<String> {
-    None
-}
 
-#[cfg(not(target_os = "macos"))]
-pub fn release_idle(_after: Duration) {}
 
-#[cfg(not(target_os = "macos"))]
-pub fn unload() {}
 
-#[cfg(target_os = "macos")]
 mod engine {
     use std::sync::atomic::{AtomicU32, Ordering};
     use std::sync::mpsc;

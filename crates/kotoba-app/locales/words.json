@@ -215,15 +215,6 @@
     "de": "Mit ⌘ oder ⌥.",
     "es": "Con ⌘ o ⌥."
   },
-  "With Ctrl or Alt.": {
-    "zh-Hans": "需带 Ctrl 或 Alt。",
-    "zh-Hant": "需帶 Ctrl 或 Alt。",
-    "ja": "Ctrl か Alt と一緒に。",
-    "ko": "Ctrl 또는 Alt와 함께.",
-    "fr": "Avec Ctrl ou Alt.",
-    "de": "Mit Strg oder Alt.",
-    "es": "Con Ctrl o Alt."
-  },
   "{key} is taken.": {
     "zh-Hans": "{key} 已被占用。",
     "zh-Hant": "{key} 已被佔用。",
@@ -1097,15 +1088,6 @@
     "de": "Im Finder öffnen",
     "es": "Abrir en el Finder"
   },
-  "Open folder": {
-    "zh-Hans": "打开文件夹",
-    "zh-Hant": "打開檔案夾",
-    "ja": "フォルダを開く",
-    "ko": "폴더 열기",
-    "fr": "Ouvrir le dossier",
-    "de": "Ordner öffnen",
-    "es": "Abrir carpeta"
-  },
   "Close (esc)": {
     "zh-Hans": "关闭 (esc)",
     "zh-Hant": "關閉 (esc)",
@@ -1376,15 +1358,6 @@
     "de": "Für immer",
     "es": "Siempre"
   },
-  "Version": {
-    "zh-Hans": "版本",
-    "zh-Hant": "版本",
-    "ja": "バージョン",
-    "ko": "버전",
-    "fr": "Version",
-    "de": "Version",
-    "es": "Versión"
-  },
   "Check for updates": {
     "zh-Hans": "检查更新",
     "zh-Hant": "檢查更新",
@@ -1573,15 +1546,6 @@
     "fr": "Le micro n’a pas démarré : {e}.",
     "de": "Das Mikrofon ist nicht angegangen: {e}.",
     "es": "El micrófono no se inició: {e}."
-  },
-  "Dictation is on a Mac only for now.": {
-    "zh-Hans": "目前只有 Mac 支持听写。",
-    "zh-Hant": "目前只有 Mac 支援聽寫。",
-    "ja": "音声入力は今のところ Mac 専用です。",
-    "ko": "받아쓰기는 지금은 Mac에서만 됩니다.",
-    "fr": "La dictée n’existe que sur Mac pour l’instant.",
-    "de": "Diktat gibt es vorerst nur auf dem Mac.",
-    "es": "Por ahora, el dictado solo funciona en Mac."
   },
   "Download a speech model first.": {
     "zh-Hans": "请先下载一个语音模型。",

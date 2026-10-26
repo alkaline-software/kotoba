@@ -376,16 +376,10 @@ fn strip_marker(line: &str) -> &str {
     line
 }
 
-#[cfg(target_os = "macos")]
 pub use engine::{release_idle, rewrite, tidy, unload};
 
-#[cfg(not(target_os = "macos"))]
-pub fn release_idle(_after: std::time::Duration) {}
 
-#[cfg(not(target_os = "macos"))]
-pub fn unload() {}
 
-#[cfg(target_os = "macos")]
 mod engine {
     use std::ffi::{c_char, c_int, c_void, CString};
     use std::sync::Mutex;

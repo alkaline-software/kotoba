@@ -8,7 +8,7 @@ struct Home {
 }
 
 /// Point KOTOBA_HOME at a temp tree. Tests that touch disk run one at a
-/// time (`--test-threads=1` is set in CI; here we serialise with a lock).
+/// time (`--test-threads=1` is set in CI; here we serialize with a lock).
 static LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
 
 fn isolated() -> (Home, std::sync::MutexGuard<'static, ()>) {

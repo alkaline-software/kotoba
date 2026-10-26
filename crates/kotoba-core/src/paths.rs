@@ -77,13 +77,10 @@ pub fn ensure_dirs() -> std::io::Result<()> {
     Ok(())
 }
 
-#[cfg(unix)]
 fn chmod700(path: &Path) {
     use std::os::unix::fs::PermissionsExt;
     let _ = fs::set_permissions(path, fs::Permissions::from_mode(0o700));
 }
-#[cfg(not(unix))]
-fn chmod700(_path: &Path) {}
 
 pub fn read_json(path: &Path) -> Option<Value> {
     let text = fs::read_to_string(path).ok()?;

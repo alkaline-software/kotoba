@@ -19,7 +19,7 @@ chrono.workspace = true
 # gpui-component depends on the unpinned zed source, so a `rev` here would
 # produce a second copy of gpui that it does not build against.
 gpui = { git = "https://github.com/zed-industries/zed" }
-gpui_platform = { git = "https://github.com/zed-industries/zed", features = ["font-kit", "x11", "wayland", "runtime_shaders"] }
+gpui_platform = { git = "https://github.com/zed-industries/zed", features = ["font-kit", "runtime_shaders"] }
 gpui-component = { git = "https://github.com/longbridge/gpui-component", rev = "fd3bc2bbb8a2c4dfe268c1475682476ada54cd0c" }
 gpui-component-assets = { git = "https://github.com/longbridge/gpui-component", rev = "fd3bc2bbb8a2c4dfe268c1475682476ada54cd0c" }
 # The window selection layer, for ending a drag a swallowed click would leave open.
@@ -28,13 +28,7 @@ futures = "0.3"
 # The system's preferred languages, for the window's (`i18n`).
 sys-locale = "0.3"
 opener = "0.7"
-rust-embed = { version = "8", features = ["debug-embed"] }
-
-# The .exe carries the icon as a resource; nothing to do elsewhere.
-[target.'cfg(windows)'.build-dependencies]
-winresource = "0.1"
-
-[target.'cfg(target_os = "macos")'.dependencies]
+rust-embed = { version = "8", features = ["debug-embed", "include-exclude"] }
 objc2 = "0.6"
 # The handler of an AppKit event monitor (`sys::key_events`).
 block2 = "0.6"
@@ -48,9 +42,9 @@ resvg = "0.46"
 # Launch at login (`sys::set_login`).
 objc2-service-management = { version = "0.3", features = ["SMAppService"] }
 
-# Installers: `cargo packager --release` (cargo-packager) builds the app and
-# wraps it per platform. No signing identity is set here: the macOS bundle
-# is signed afterwards by scripts/release-mac.sh.
+# The bundle: `cargo packager --release` (cargo-packager) wraps the app.
+# No signing identity is set here: the bundle is signed afterwards by
+# scripts/release-mac.sh.
 [package.metadata.packager]
 productName = "Kotoba"
 identifier = "com.pingfanhu.kotoba"
@@ -58,7 +52,7 @@ description = "Dictation anywhere on this Mac: press a key, speak, and the words
 homepage = "https://github.com/alkaline-software/kotoba"
 licenseFile = "../../LICENSE"
 category = "Productivity"
-icons = ["assets/icon/icon.icns", "assets/icon/icon.ico", "assets/icon/icon-*.png"]
+icons = ["assets/icon/icon.icns"]
 outDir = "../../dist"
 binaries = [{ path = "Kotoba", main = true }]
 
@@ -69,9 +63,3 @@ minimumSystemVersion = "14.0"
 # entitlement that goes with it under the hardened runtime is given at
 # signing (release-mac.sh).
 infoPlistPath = "macos/Info.plist"
-
-[package.metadata.packager.nsis]
-installMode = "currentUser"
-
-[package.metadata.packager.deb]
-depends = ["libxkbcommon0", "libxkbcommon-x11-0", "libwayland-client0", "libvulkan1", "libfontconfig1", "libfreetype6", "libx11-xcb1", "libxcb1"]

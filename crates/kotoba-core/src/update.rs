@@ -1,21 +1,15 @@
 //! Keeping the app current: what the newest release is, fetching its
 //! installer for this machine, and putting it in place.
 //!
-//! The release lives on GitHub under stable asset names (see WORKFLOW.md),
+//! The release lives on GitHub under stable asset names (see docs/release.md),
 //! so nothing here needs the API: the newest version is read off the
 //! redirect `releases/latest` answers with, and the installer is at
-//! `releases/download/v<version>/<asset>`. Installing is per platform:
-//!
-//! - macOS: the disk image is mounted, `Kotoba.app` copied out beside the
-//!   running bundle with `ditto` (which keeps the signature and the
-//!   attributes), and swapped in with two renames. The old process keeps
-//!   running from its unlinked files until the app quits, and the new
-//!   app is opened once it has: never two at once.
-//! - Windows: the installer is started; it replaces the files itself once
-//!   the running app has quit.
-//! - Linux: an AppImage is replaced in place (`APPIMAGE` names the file the
-//!   kernel is running) and started again. A `.deb` install is sent to the
-//!   release page instead.
+//! `releases/download/v<version>/<asset>`. To install, the disk image is
+//! mounted, `Kotoba.app` copied out beside the running bundle with `ditto`
+//! (which keeps the signature and the attributes), and swapped in with two
+//! renames. The old process keeps running from its unlinked files until
+//! the app quits, and the new app is opened once it has: never two at
+//! once.
 //!
 //! What was learned is kept in `~/.kotoba/state/update.json`: when the last
 //! check ran and what it found, so an automatic check runs once a day and
@@ -37,17 +31,9 @@ pub fn current_version() -> &'static str {
     env!("CARGO_PKG_VERSION")
 }
 
-/// The installer for this machine, as the release names it.
-pub fn asset_name() -> Option<&'static str> {
-    if cfg!(target_os = "macos") {
-        Some(if cfg!(target_arch = "aarch64") { "Kotoba-mac-arm64.dmg" } else { "Kotoba-mac-x64.dmg" })
-    } else if cfg!(target_os = "windows") {
-        Some("Kotoba-windows-x64-setup.exe")
-    } else if cfg!(target_os = "linux") {
-        Some("Kotoba-linux-x64.AppImage")
-    } else {
-        None
-    }
+/// The disk image for this Mac's chip, as the release names it.
+pub fn asset_name() -> &'static str {
+    if cfg!(target_arch = "aarch64") { "Kotoba-mac-arm64.dmg" } else { "Kotoba-mac-x64.dmg" }
 }
 
 /// The project's own page.
@@ -162,7 +148,7 @@ pub fn downloads_dir() -> PathBuf {
 /// Fetch this machine's installer for `version` into the cache, reporting
 /// bytes so far and the total when known. Answers the file.
 pub fn download(version: &str, progress: &dyn Fn(u64, Option<u64>)) -> Result<PathBuf, String> {
-    let asset = asset_name().ok_or("no installer is built for this platform")?;
+    let asset = asset_name();
     let dir = downloads_dir();
     std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
     let dest = dir.join(asset);
@@ -195,30 +181,10 @@ pub fn download(version: &str, progress: &dyn Fn(u64, Option<u64>)) -> Result<Pa
     Ok(dest)
 }
 
-/// Put the fetched installer in place and start the new app. On success
-/// the caller quits: the new one starts once it has (macOS), is already
-/// running (Linux), or the installer is up (Windows).
-pub fn install(installer: &Path) -> Result<(), String> {
-    install_into(installer, None)
-}
-
-/// `install`, with the bundle to replace named (macOS only; the CLI uses
-/// it to try the swap on a throwaway bundle). `None` is the running one.
-pub fn install_into(installer: &Path, bundle: Option<&Path>) -> Result<(), String> {
-    #[cfg(not(target_os = "macos"))]
-    let _ = bundle;
-    #[cfg(target_os = "macos")]
-    {
-        install_macos(installer, bundle)
-    }
-    #[cfg(target_os = "windows")]
-    {
-        Command::new(installer).spawn().map(|_| ()).map_err(|e| format!("could not start the installer: {e}"))
-    }
-    #[cfg(not(any(target_os = "macos", target_os = "windows")))]
-    {
-        install_linux(installer)
-    }
+/// Put the fetched disk image's app in place and start it once this one
+/// has gone. On success the caller quits.
+pub fn install(dmg: &Path) -> Result<(), String> {
+    install_into(dmg, None)
 }
 
 /// The `.app` the running binary lives in, if it is in one.
@@ -227,8 +193,9 @@ pub fn bundle_path() -> Option<PathBuf> {
     exe.ancestors().find(|p| p.extension().map(|e| e == "app").unwrap_or(false)).map(Path::to_path_buf)
 }
 
-#[cfg(target_os = "macos")]
-fn install_macos(dmg: &Path, bundle: Option<&Path>) -> Result<(), String> {
+/// `install`, with the bundle to replace named (the CLI uses it to try the
+/// swap on a throwaway bundle). `None` is the running one.
+pub fn install_into(dmg: &Path, bundle: Option<&Path>) -> Result<(), String> {
     let bundle = match bundle {
         Some(b) => b.to_path_buf(),
         None => bundle_path().ok_or("Kotoba is not running from an app bundle here; open the disk image and drag Kotoba to Applications instead")?,
@@ -275,7 +242,6 @@ fn install_macos(dmg: &Path, bundle: Option<&Path>) -> Result<(), String> {
 /// beside it (`open -n`), it was a second app to the Dock, which gave it
 /// an icon of its own at the Dock's end and left the one the person keeps
 /// there without a running app.
-#[cfg(target_os = "macos")]
 fn open_once_gone(pid: u32, bundle: &Path) -> std::io::Result<()> {
     use std::os::unix::process::CommandExt;
     use std::process::Stdio;
@@ -289,15 +255,4 @@ fn open_once_gone(pid: u32, bundle: &Path) -> std::io::Result<()> {
         .process_group(0)
         .spawn()
         .map(|_| ())
-}
-
-#[cfg(not(any(target_os = "macos", target_os = "windows")))]
-fn install_linux(image: &Path) -> Result<(), String> {
-    use std::os::unix::fs::PermissionsExt;
-    let running = std::env::var_os("APPIMAGE").map(PathBuf::from).ok_or("Kotoba is not running as an AppImage here; get the new build from the release page")?;
-    let staged = running.with_extension("AppImage.new");
-    std::fs::copy(image, &staged).map_err(|e| e.to_string())?;
-    std::fs::set_permissions(&staged, std::fs::Permissions::from_mode(0o755)).map_err(|e| e.to_string())?;
-    std::fs::rename(&staged, &running).map_err(|e| format!("could not replace the AppImage: {e}"))?;
-    Command::new(&running).spawn().map(|_| ()).map_err(|e| format!("the new AppImage is in place but did not start: {e}"))
 }

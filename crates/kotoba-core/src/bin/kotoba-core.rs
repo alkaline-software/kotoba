@@ -20,7 +20,6 @@ fn main() {
                 Ok(text) => text.lines().filter(|l| !l.trim().is_empty()).map(str::to_string).collect(),
                 Err(_) => vec![given.clone()],
             };
-            #[cfg(target_os = "macos")]
             {
                 for words in lines {
                     let at = std::time::Instant::now();
@@ -35,11 +34,6 @@ fn main() {
                     }
                 }
                 clean::unload();
-            }
-            #[cfg(not(target_os = "macos"))]
-            {
-                let _ = (m, lines, app);
-                println!("dictation is on a Mac only for now");
             }
         }
         "dictate" => {
@@ -83,7 +77,6 @@ fn main() {
                     let bytes = std::fs::read(path).expect("could not read the file");
                     let (samples, channels, rate) = dictate::wav_samples(&bytes).expect("not a 16-bit WAV file");
                     let audio = dictate::to_whisper(&samples, channels, rate);
-                    #[cfg(target_os = "macos")]
                     {
                         let at = std::time::Instant::now();
                         let app = kotoba_core::config::Config::load().app;
@@ -93,11 +86,6 @@ fn main() {
                             Err(e) => println!("no words: {e}"),
                         }
                         dictate::unload();
-                    }
-                    #[cfg(not(target_os = "macos"))]
-                    {
-                        let _ = (m, audio);
-                        println!("dictation is on a Mac only for now");
                     }
                 }
                 _ => {

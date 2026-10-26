@@ -81,14 +81,11 @@ fn system_lang() -> &'static str {
     }
 }
 
-/// What the language is set to: `system`, or a code of `CHOICES`. On a
-/// Mac the app's own `AppleLanguages` says, which System Settings may
-/// have changed since; elsewhere the settings do.
-pub fn chosen(saved: &str) -> String {
-    if cfg!(target_os = "macos") {
-        return crate::sys::own_language().map_or("system".into(), |code| pick([code.as_str()]).to_string());
-    }
-    if saved == "system" || CHOICES.iter().any(|(c, _, _)| *c == saved) { saved.to_string() } else { "system".into() }
+/// What the language is set to: `system`, or a code of `CHOICES`. The
+/// app's own `AppleLanguages` says, which System Settings may have
+/// changed since.
+pub fn chosen() -> String {
+    crate::sys::own_language().map_or("system".into(), |code| pick([code.as_str()]).to_string())
 }
 
 /// The window's language set to `choice` (`system` or a code), and the
@@ -189,7 +186,8 @@ mod tests {
             include_str!("kotoba.rs"),
             include_str!("settings.rs"),
             include_str!("controls.rs"),
-            include_str!("ui.rs"),
+            include_str!("scroll.rs"),
+            include_str!("widgets.rs"),
             include_str!("sys.rs"),
             include_str!("pill.rs"),
         ];
@@ -225,7 +223,7 @@ mod tests {
         for (_, label, _) in kotoba_core::dictate::KEEPS {
             asked.push(label.to_string());
         }
-        asked.extend(crate::ui::MONTHS.iter().map(|m| m.to_string()));
+        asked.extend(crate::widgets::MONTHS.iter().map(|m| m.to_string()));
         asked.extend(crate::kotoba::SECTIONS.iter().map(|(_, name, _)| name.to_string()));
         let missing: Vec<&String> = asked.iter().filter(|p| !p.is_empty() && !table.contains_key(p.as_str())).collect();
         assert!(missing.is_empty(), "not in locales/words.json: {missing:#?}");

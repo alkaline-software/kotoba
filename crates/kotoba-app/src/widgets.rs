@@ -1,7 +1,7 @@
-//! The window's small parts, the same as Emaki's: the button (a pill with
-//! an icon), keys drawn on caps, hover labels, the floating card's
-//! shadow, and the click that is swallowed without leaving a text drag
-//! open. Lifted from Emaki's `workbench.rs` and `branches.rs`.
+//! The shared drawing: the button (a pill with an icon), keys drawn on
+//! caps, hover labels, a page fading in, the floating card's shadow, the
+//! motion's lengths, and the click that is swallowed without leaving a
+//! text drag open.
 
 use std::time::Duration;
 
@@ -27,7 +27,7 @@ pub fn swallow_click(window: &mut Window, cx: &mut App) {
 
 /// The shadow under a floating card (a sheet, a list): a wide soft drop
 /// in the ink's own hue and a hairline of contact under it, so the card
-/// lifts off the page rather than sitting in a grey halo.
+/// lifts off the page rather than sitting in a gray halo.
 pub fn float_shadow(theme: &gpui_component::Theme) -> Vec<BoxShadow> {
     let dark = theme.mode.is_dark();
     let ink = if dark { gpui::black() } else { theme.foreground };
@@ -98,7 +98,7 @@ pub fn choice_pill(id: impl Into<ElementId>, icon: &'static str, label: impl Int
     let (ground, edge, hover) = match kind {
         Press::Danger => (None, theme.danger.opacity(0.35), theme.danger.opacity(0.1)),
         Press::Primary => (Some(theme.primary), theme.primary, theme.primary.opacity(0.85)),
-        // An edge of the ink, not the border's colour: on a card the
+        // An edge of the ink, not the border's color: on a card the
         // border is the card's own shade and the pill had no outline.
         Press::Quiet => (None, theme.foreground.opacity(0.16), theme.foreground.opacity(0.06)),
     };
@@ -126,11 +126,11 @@ pub fn small_pill(id: impl Into<ElementId>, icon: &'static str, label: impl Into
 }
 
 /// The icon a key's sign is drawn with: none for a character that is
-/// not one. Off a Mac ⌘ and ⌥ are the words Ctrl and Alt on their caps.
+/// not one.
 fn key_sign(c: char) -> Option<&'static str> {
     Some(match c {
-        '⌘' if cfg!(target_os = "macos") => "icons/key-command.svg",
-        '⌥' if cfg!(target_os = "macos") => "icons/key-option.svg",
+        '⌘' => "icons/key-command.svg",
+        '⌥' => "icons/key-option.svg",
         '⇧' => "icons/key-shift.svg",
         '⌃' => "icons/chevron-up.svg",
         '🌐' => "icons/globe.svg",
@@ -242,11 +242,6 @@ fn key_pieces(text: &str) -> Vec<KeyPiece> {
 /// plates they are level and read as one size.
 fn key_cap(key: &str) -> Div {
     let sign = key.chars().next().filter(|_| key.chars().count() == 1).and_then(key_sign);
-    let word = match key {
-        "⌘" => "Ctrl",
-        "⌥" => "Alt",
-        other => other,
-    };
     div()
         .flex_shrink_0()
         .h(px(KEY_CAP))
@@ -262,14 +257,14 @@ fn key_cap(key: &str) -> Div {
         .font_weight(FontWeight::MEDIUM)
         .map(|d| match sign {
             Some(path) => d.child(Icon::default().path(path).with_size(px(10.5))),
-            None => d.child(word.to_string()),
+            None => d.child(key.to_string()),
         })
 }
 
 /// Words that name keys, written as the Mac has them ("Add (↩)"), with
 /// each shortcut drawn as its keys on caps (`key_cap`) after the words.
 /// **Every place the window shows a key goes through this** (`tip`, or
-/// this itself for a line of words). The words take the size and colour
+/// this itself for a line of words). The words take the size and color
 /// of where they stand. It does not wrap.
 pub fn key_text(text: &str) -> Div {
     let mut row = h_flex().flex_shrink_0().items_center();

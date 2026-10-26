@@ -12,7 +12,6 @@ pub fn open_path(path: &Path) {
 }
 
 /// The window's own view, which gpui draws in and takes its keys by.
-#[cfg(target_os = "macos")]
 fn ns_view(window: &gpui::Window) -> Option<&objc2_app_kit::NSView> {
     use raw_window_handle::{HasWindowHandle, RawWindowHandle};
     let handle = HasWindowHandle::window_handle(window).ok()?;
@@ -27,7 +26,6 @@ fn ns_view(window: &gpui::Window) -> Option<&objc2_app_kit::NSView> {
 /// this is AppKit's own monitor, which sees every event the app is sent
 /// and lets it through as it was. Only while the app is the active one,
 /// as any other key of the window's.
-#[cfg(target_os = "macos")]
 pub fn key_events() -> futures::channel::mpsc::UnboundedReceiver<Option<u64>> {
     use objc2_app_kit::{NSEvent, NSEventMask, NSEventType};
     let (tx, rx) = futures::channel::mpsc::unbounded();
@@ -50,7 +48,6 @@ pub fn key_events() -> futures::channel::mpsc::UnboundedReceiver<Option<u64>> {
 /// word the window puts in a sentence of its language (`input`, `emoji`,
 /// `dictation`), empty when the value is not one known here. A Mac that never had it set has a job for the key, so no
 /// value is a job too. Asks `defaults`, so off the main thread.
-#[cfg(target_os = "macos")]
 pub fn fn_key_use() -> Option<&'static str> {
     let probe = FN_USE_PROBE.load(std::sync::atomic::Ordering::Relaxed);
     let value = if probe >= 0 {
@@ -68,10 +65,6 @@ pub fn fn_key_use() -> Option<&'static str> {
     }
 }
 /// Elsewhere the key has no such setting.
-#[cfg(not(target_os = "macos"))]
-pub fn fn_key_use() -> Option<&'static str> {
-    None
-}
 
 /// `KOTOBA_GO=fnuse:<n>`: the value `fn_key_use` reads in place of the
 /// Mac's, so the guidance can be seen without touching Keyboard settings.
@@ -82,7 +75,6 @@ pub static FN_USE_PROBE: std::sync::atomic::AtomicI32 = std::sync::atomic::Atomi
 /// Shortcuts, Function Keys). Off, which a Mac that never had it set
 /// is, each does what is printed on it, and is an F key only with Fn
 /// held. Asks `defaults`, so off the main thread.
-#[cfg(target_os = "macos")]
 pub fn f_keys_standard() -> bool {
     let probe = F_STATE_PROBE.load(std::sync::atomic::Ordering::Relaxed);
     if probe >= 0 {
@@ -91,10 +83,6 @@ pub fn f_keys_standard() -> bool {
     std::process::Command::new("defaults").args(["read", "-g", "com.apple.keyboard.fnState"]).output().is_ok_and(|out| String::from_utf8_lossy(&out.stdout).trim() == "1")
 }
 /// Elsewhere F keys are F keys.
-#[cfg(not(target_os = "macos"))]
-pub fn f_keys_standard() -> bool {
-    true
-}
 
 /// `KOTOBA_GO=fstate:<0|1>`: the value `f_keys_standard` reads in place
 /// of the Mac's.
@@ -104,7 +92,6 @@ pub static F_STATE_PROBE: std::sync::atomic::AtomicI32 = std::sync::atomic::Atom
 /// asked to quit, and made to if it is still there a few seconds on: two
 /// would each take dictation's key and write everything twice. The one
 /// opened last stays.
-#[cfg(target_os = "macos")]
 pub fn end_other_kotobas() {
     use objc2_app_kit::NSRunningApplication;
     use objc2_foundation::NSString;
@@ -134,8 +121,6 @@ pub fn end_other_kotobas() {
         }
     });
 }
-#[cfg(not(target_os = "macos"))]
-pub fn end_other_kotobas() {}
 
 /// Keyboard settings in System Settings, where Fn's use is set.
 pub const KEYBOARD_SETTINGS_URL: &str = "x-apple.systempreferences:com.apple.Keyboard-Settings.extension";
@@ -143,7 +128,6 @@ pub const KEYBOARD_SETTINGS_URL: &str = "x-apple.systempreferences:com.apple.Key
 /// A sound of the app's own (a WAV file's bytes) played once, quietly:
 /// dictation's start and stop. The last one played is held until the
 /// next, or the system would let it go before it had sounded.
-#[cfg(target_os = "macos")]
 pub fn play_sound(wav: &'static [u8]) {
     use objc2::AllocAnyThread as _;
     use objc2_app_kit::NSSound;
@@ -160,18 +144,14 @@ pub fn play_sound(wav: &'static [u8]) {
         PLAYING.with(|p| *p.borrow_mut() = Some(sound));
     }
 }
-#[cfg(not(target_os = "macos"))]
-#[allow(dead_code)]
-pub fn play_sound(_wav: &'static [u8]) {}
 
 /// A picture of the app's own window, written to `path` as a PNG, for
 /// looking at a state from a script (`KOTOBA_SHOT`). A process may capture
 /// its own windows without Screen Recording access, which the terminal
 /// that runs a probe usually lacks. `CGWindowListCreateImage` is looked
-/// up by name: newer SDKs mark it unavailable in favour of
+/// up by name: newer SDKs mark it unavailable in favor of
 /// ScreenCaptureKit, which wants that access, while the function itself
 /// is still there and still captures a window of the caller's own.
-#[cfg(target_os = "macos")]
 pub fn shoot_window(window: &gpui::Window, path: &std::path::Path) -> Result<(), String> {
     use objc2_app_kit::NSView;
     use raw_window_handle::{HasWindowHandle, RawWindowHandle};
@@ -184,7 +164,6 @@ pub fn shoot_window(window: &gpui::Window, path: &std::path::Path) -> Result<(),
 }
 
 /// A picture of one of the app's own windows by its number (`shoot_window`).
-#[cfg(target_os = "macos")]
 fn shoot_number(number: isize, path: &std::path::Path) -> Result<(), String> {
     use std::ffi::{c_char, c_void, CString};
     use std::os::unix::ffi::OsStrExt;
@@ -244,10 +223,6 @@ fn shoot_number(number: isize, path: &std::path::Path) -> Result<(), String> {
         if written { Ok(()) } else { Err(format!("could not write {}", path.display())) }
     }
 }
-#[cfg(not(target_os = "macos"))]
-pub fn shoot_window(_window: &gpui::Window, _path: &std::path::Path) -> Result<(), String> {
-    Err("a picture of the window is only taken on macOS".into())
-}
 
 // Dictation in other apps. What is pressed while another app is in front
 // is seen through an event tap, and the words go into that app by a paste:
@@ -255,7 +230,6 @@ pub fn shoot_window(_window: &gpui::Window, _path: &std::path::Path) -> Result<(
 
 
 /// What was pressed while another app was in front (`outside_keys`).
-#[cfg(target_os = "macos")]
 #[derive(Debug, Clone, Copy)]
 pub enum Outside {
     /// The modifiers held changed: the Mac's flags.
@@ -268,7 +242,6 @@ pub enum Outside {
     Escape,
 }
 
-#[cfg(target_os = "macos")]
 mod outside {
     use std::ffi::c_void;
     use std::sync::atomic::{AtomicBool, AtomicPtr, AtomicU64, Ordering};
@@ -429,7 +402,6 @@ mod outside {
 }
 
 /// Whether this app is the one in front.
-#[cfg(target_os = "macos")]
 fn app_is_active() -> bool {
     use objc2_app_kit::NSRunningApplication;
     NSRunningApplication::currentApplication().isActive()
@@ -437,14 +409,12 @@ fn app_is_active() -> bool {
 
 /// Whether the app may watch keys pressed in other apps and press keys in
 /// them: Accessibility, in System Settings.
-#[cfg(target_os = "macos")]
 pub fn trusted() -> bool {
     outside::trusted()
 }
 
 /// A message each time Accessibility's list changes, for any app: the
 /// system's own notice, so nothing asks over and over.
-#[cfg(target_os = "macos")]
 pub fn trust_changes() -> futures::channel::mpsc::UnboundedReceiver<()> {
     use objc2_foundation::{NSDistributedNotificationCenter, NSNotification, NSOperationQueue, NSString};
     let (tx, rx) = futures::channel::mpsc::unbounded();
@@ -460,18 +430,12 @@ pub fn trust_changes() -> futures::channel::mpsc::UnboundedReceiver<()> {
 
 /// The system's own question, which puts the app in Accessibility's
 /// list and offers to open it there.
-#[cfg(target_os = "macos")]
 pub fn ask_trust() -> bool {
     outside::ask_trust()
-}
-#[cfg(not(target_os = "macos"))]
-pub fn ask_trust() -> bool {
-    false
 }
 
 /// The tap over other apps switched back on, when there is one: true
 /// when it is on.
-#[cfg(target_os = "macos")]
 pub fn revive_outside_keys() -> bool {
     outside::revive()
 }
@@ -479,7 +443,6 @@ pub fn revive_outside_keys() -> bool {
 /// What is pressed while another app is in front, for dictation started
 /// and stopped there. None until Accessibility is granted; asked again
 /// once it is.
-#[cfg(target_os = "macos")]
 pub fn outside_keys() -> Option<futures::channel::mpsc::UnboundedReceiver<Outside>> {
     let (tx, rx) = futures::channel::mpsc::unbounded();
     outside::start(tx).then_some(rx)
@@ -488,7 +451,6 @@ pub fn outside_keys() -> Option<futures::channel::mpsc::UnboundedReceiver<Outsid
 /// Dictation's key as the tap matches it in other apps: a gpui binding
 /// ("cmd-shift-d"), or None for a tap of modifiers or a key that has no
 /// code here.
-#[cfg(target_os = "macos")]
 pub fn set_outside_key(binding: Option<&gpui::Keystroke>) {
     let code = binding.and_then(|k| key_code(&k.key).map(|c| (c, k)));
     let packed = code.map_or(0, |(c, k)| {
@@ -510,21 +472,15 @@ pub fn set_outside_key(binding: Option<&gpui::Keystroke>) {
     });
     outside::KEY.store(packed, std::sync::atomic::Ordering::Relaxed);
 }
-#[cfg(not(target_os = "macos"))]
-pub fn set_outside_key(_binding: Option<&gpui::Keystroke>) {}
 
 /// Escape in another app cancels dictation, and is kept from that app,
 /// while this is on.
-#[cfg(target_os = "macos")]
 pub fn take_escape(on: bool) {
     outside::ESCAPE_TAKEN.store(on, std::sync::atomic::Ordering::Relaxed);
 }
-#[cfg(not(target_os = "macos"))]
-pub fn take_escape(_on: bool) {}
 
 /// The Mac's code for a key as gpui names it, on the US layout, as the
 /// system's own shortcuts are.
-#[cfg(target_os = "macos")]
 fn key_code(key: &str) -> Option<u16> {
     const LETTERS: [u16; 26] = [0, 11, 8, 2, 14, 3, 5, 4, 34, 38, 40, 37, 46, 45, 31, 35, 12, 15, 1, 17, 32, 9, 13, 7, 16, 6];
     const DIGITS: [u16; 10] = [29, 18, 19, 20, 21, 23, 22, 26, 28, 25];
@@ -562,7 +518,6 @@ fn key_code(key: &str) -> Option<u16> {
 
 /// What the general pasteboard holds, every item in every type, to put
 /// back after a paste of our own.
-#[cfg(target_os = "macos")]
 pub struct Clipboard {
     items: Vec<Vec<(String, Vec<u8>)>>,
     count: isize,
@@ -571,7 +526,6 @@ pub struct Clipboard {
 /// The words pasted into the app in front, by the pasteboard and ⌘V. The
 /// pasteboard is marked as passing through, which clipboard managers skip;
 /// what it held is returned, to be put back once the app has read it.
-#[cfg(target_os = "macos")]
 pub fn paste_words(words: &str) -> Clipboard {
     use objc2_app_kit::{NSPasteboard, NSPasteboardTypeString};
     use objc2_foundation::{NSData, NSString};
@@ -600,7 +554,6 @@ pub fn paste_words(words: &str) -> Clipboard {
 
 /// The pasteboard as it was before `paste_words`, unless something else
 /// has been copied since.
-#[cfg(target_os = "macos")]
 pub fn restore_clipboard(was: Clipboard) {
     use objc2::runtime::ProtocolObject;
     use objc2_app_kit::{NSPasteboard, NSPasteboardItem, NSPasteboardWriting};
@@ -631,14 +584,12 @@ pub fn restore_clipboard(was: Clipboard) {
 /// under the pointer, by its display's id and width, and its notch when
 /// it has one, as the width of the menu bar on either side of it and the
 /// notch's height.
-#[cfg(target_os = "macos")]
 pub struct PillPlace {
     pub display: u32,
     pub width: f32,
     pub notch: Option<(f32, f32, f32)>,
 }
 
-#[cfg(target_os = "macos")]
 pub fn pill_place() -> Option<PillPlace> {
     use objc2::MainThreadMarker;
     use objc2_app_kit::{NSEvent, NSScreen};
@@ -665,7 +616,6 @@ pub fn pill_place() -> Option<PillPlace> {
 /// in the way of the pointer, and drawn with no shadow of the system's.
 /// It has no title bar, so the system lets it stand over the menu bar,
 /// against the screen's top edge.
-#[cfg(target_os = "macos")]
 pub fn float_pill(window: &gpui::Window) {
     use objc2_app_kit::NSWindowStyleMask;
     let Some(view) = ns_view(window) else { return };
@@ -683,19 +633,12 @@ pub fn float_pill(window: &gpui::Window) {
 }
 
 /// The window kept over every other app's, for a probe.
-#[cfg(target_os = "macos")]
 pub fn keep_on_top(window: &gpui::Window) {
     if let Some(native) = ns_view(window).and_then(|v| v.window()) {
         native.setLevel(objc2_app_kit::NSFloatingWindowLevel);
     }
 }
-#[cfg(not(target_os = "macos"))]
-pub fn keep_on_top(_window: &gpui::Window) {}
 
-#[cfg(not(target_os = "macos"))]
-pub fn trusted() -> bool {
-    false
-}
 
 // Kotoba is a menu bar app: no Dock icon, one item at the menu bar's
 // right, and the settings window opened from it. One click on the item
@@ -720,7 +663,6 @@ pub enum MenuPick {
     Line(&'static str),
 }
 
-#[cfg(target_os = "macos")]
 mod menu_bar {
     use std::cell::RefCell;
     use std::sync::atomic::{AtomicBool, Ordering};
@@ -941,41 +883,28 @@ mod menu_bar {
 /// The menu bar item and its menu of `lines`, whose choices come down
 /// the channel; `menu_on_left` swaps the clicks, and `shown` is whether
 /// the item is in the bar at all.
-#[cfg(target_os = "macos")]
 pub fn menu_bar(lines: &[MenuLine], menu_on_left: bool, shown: bool) -> futures::channel::mpsc::UnboundedReceiver<MenuPick> {
     let (tx, rx) = futures::channel::mpsc::unbounded();
     menu_bar::install(tx, lines, menu_on_left, shown);
     rx
 }
-#[cfg(not(target_os = "macos"))]
-pub fn menu_bar(_lines: &[MenuLine], _menu_on_left: bool, _shown: bool) -> futures::channel::mpsc::UnboundedReceiver<MenuPick> {
-    futures::channel::mpsc::unbounded().1
-}
 
 /// The settings changed which click shows the menu, or whether the item
 /// is in the bar: it changes at once.
-#[cfg(target_os = "macos")]
 pub fn set_menu_bar(menu_on_left: bool, shown: bool) {
     menu_bar::set(menu_on_left, shown);
 }
-#[cfg(not(target_os = "macos"))]
-pub fn set_menu_bar(_menu_on_left: bool, _shown: bool) {}
 
 /// The menu's choices named again, in the language now in use.
-#[cfg(target_os = "macos")]
 pub fn retitle_menu(lines: &[MenuLine]) {
     menu_bar::retitle(lines);
 }
-#[cfg(not(target_os = "macos"))]
-pub fn retitle_menu(_lines: &[MenuLine]) {}
 
 /// For a probe: the item's frame (`menu_bar::frame`), and a picture of
 /// its menu (`menu_bar::shoot`).
-#[cfg(target_os = "macos")]
 pub fn menu_bar_frame() -> Option<(f64, f64, f64, f64, bool)> {
     menu_bar::frame()
 }
-#[cfg(target_os = "macos")]
 pub fn shoot_menu(path: std::path::PathBuf) {
     menu_bar::shoot(path);
 }
@@ -991,7 +920,6 @@ pub enum Login {
     Waiting,
 }
 
-#[cfg(target_os = "macos")]
 pub fn login() -> Login {
     use objc2_service_management::{SMAppService, SMAppServiceStatus};
     match unsafe { SMAppService::mainAppService().status() } {
@@ -1000,39 +928,26 @@ pub fn login() -> Login {
         _ => Login::Off,
     }
 }
-#[cfg(not(target_os = "macos"))]
-pub fn login() -> Login {
-    Login::Off
-}
 
 /// Kotoba made to open at login, or not, as the app it is: the bundle
 /// this process runs from.
-#[cfg(target_os = "macos")]
 pub fn set_login(on: bool) -> Result<(), String> {
     use objc2_service_management::SMAppService;
     let app = unsafe { SMAppService::mainAppService() };
     let done = if on { unsafe { app.registerAndReturnError() } } else { unsafe { app.unregisterAndReturnError() } };
     done.map_err(|e| e.localizedDescription().to_string())
 }
-#[cfg(not(target_os = "macos"))]
-pub fn set_login(_on: bool) -> Result<(), String> {
-    Err("opening at login is on a Mac only for now".into())
-}
 
 /// System Settings, at Login Items.
-#[cfg(target_os = "macos")]
 pub fn open_login_items() {
     unsafe { objc2_service_management::SMAppService::openSystemSettingsLoginItems() };
 }
-#[cfg(not(target_os = "macos"))]
-pub fn open_login_items() {}
 
 // The window's language. On a Mac an app's language is its own
 // `AppleLanguages` in its defaults, which System Settings, Language &
 // Region, Applications writes, and which the system reads for the app's
 // own questions (the microphone's). Kotoba's setting is the same one.
 
-#[cfg(target_os = "macos")]
 mod languages {
     use objc2::runtime::AnyObject;
     use objc2_foundation::{NSArray, NSBundle, NSString, NSUserDefaults};
@@ -1074,53 +989,36 @@ mod languages {
 
 /// The system's preferred languages, in its order, apart from any the
 /// app was given of its own.
-#[cfg(target_os = "macos")]
 pub fn system_languages() -> Vec<String> {
     let all = languages::system();
     if all.is_empty() { sys_locale::get_locales().collect() } else { all }
 }
-#[cfg(not(target_os = "macos"))]
-pub fn system_languages() -> Vec<String> {
-    sys_locale::get_locales().collect()
-}
 
 /// The language the app was given of its own, if any: by Kotoba's
 /// setting or by System Settings.
-#[cfg(target_os = "macos")]
 pub fn own_language() -> Option<String> {
     languages::own()
-}
-#[cfg(not(target_os = "macos"))]
-pub fn own_language() -> Option<String> {
-    None
 }
 
 /// The app given a language of its own (a bundle's code, `zh-Hans`), or
 /// none, to follow the system's.
-#[cfg(target_os = "macos")]
 pub fn set_own_language(code: Option<&str>) {
     languages::set_own(code);
 }
-#[cfg(not(target_os = "macos"))]
-pub fn set_own_language(_code: Option<&str>) {}
 
 /// No Dock icon and no menu of its own at the screen's top: an app of
 /// the menu bar. gpui makes every app a regular one as it starts, over
 /// the bundle's `LSUIElement`, so this is said again after it.
-#[cfg(target_os = "macos")]
 pub fn stay_in_menu_bar() {
     use objc2::MainThreadMarker;
     use objc2_app_kit::{NSApplication, NSApplicationActivationPolicy};
     let Some(mtm) = MainThreadMarker::new() else { return };
     NSApplication::sharedApplication(mtm).setActivationPolicy(NSApplicationActivationPolicy::Accessory);
 }
-#[cfg(not(target_os = "macos"))]
-pub fn stay_in_menu_bar() {}
 
 /// In the Dock and ⌘-Tab while the settings window is open, as any app
 /// with a window is, so it is found again once another app covers it;
 /// back to the menu bar alone when it closes.
-#[cfg(target_os = "macos")]
 pub fn in_dock(on: bool) {
     use objc2::MainThreadMarker;
     use objc2_app_kit::{NSApplication, NSApplicationActivationPolicy};
@@ -1128,8 +1026,6 @@ pub fn in_dock(on: bool) {
     let policy = if on { NSApplicationActivationPolicy::Regular } else { NSApplicationActivationPolicy::Accessory };
     NSApplication::sharedApplication(mtm).setActivationPolicy(policy);
 }
-#[cfg(not(target_os = "macos"))]
-pub fn in_dock(_on: bool) {}
 
 /// Where the app stands with the microphone.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -1142,7 +1038,6 @@ pub enum Mic {
     Refused,
 }
 
-#[cfg(target_os = "macos")]
 pub fn mic() -> Mic {
     use objc2_av_foundation::{AVAuthorizationStatus, AVCaptureDevice, AVMediaTypeAudio};
     let Some(audio) = (unsafe { AVMediaTypeAudio }) else { return Mic::Unasked };
@@ -1152,15 +1047,10 @@ pub fn mic() -> Mic {
         _ => Mic::Refused,
     }
 }
-#[cfg(not(target_os = "macos"))]
-pub fn mic() -> Mic {
-    Mic::Refused
-}
 
 /// The system's own question for the microphone. What the person
 /// answers comes down the channel once, on whatever thread the system
 /// answers on.
-#[cfg(target_os = "macos")]
 pub fn ask_mic() -> futures::channel::oneshot::Receiver<bool> {
     use objc2_av_foundation::{AVCaptureDevice, AVMediaTypeAudio};
     let (tx, rx) = futures::channel::oneshot::channel();

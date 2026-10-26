@@ -19,7 +19,7 @@ use kotoba_core::{dictate, update};
 use crate::kotoba::{Dictate, Escape, Inner, Kotoba, Lane, PickFor, WordList, KEY_CONTEXT, SECTIONS};
 use crate::i18n::{count, t, tf};
 use crate::sys::{Login, Mic};
-use crate::ui::{choice_pill, dictate_key_signs, float_shadow, key_combo, key_text, key_text_wrap, page_in, said_day, small_pill, swallow_click, tip, Press, FOLD_ANIM, MENU_IN, MENU_OUT};
+use crate::widgets::{choice_pill, dictate_key_signs, float_shadow, key_combo, key_text, key_text_wrap, page_in, said_day, small_pill, swallow_click, tip, Press, FOLD_ANIM, MENU_IN, MENU_OUT};
 
 /// The rail's width, and the page's margin at either side.
 const RAIL_W: Pixels = px(190.);
@@ -212,13 +212,17 @@ impl Kotoba {
                     group(Some(t("Permissions")), None, vec![line(t("Microphone"), said(mic_line), permit(mic), &theme), line(t("Accessibility"), said(t("For the shortcut and paste.")), permit(ax), &theme)], &theme),
                 ]
             }
-            "updates" => {
-                // As little as possible: the version, with what a check
-                // found, and one button that is "Check for updates" until
-                // a check finds something and "Update to x" after, in the
-                // same place, with "Release notes" under the version then.
-                let u = &self.update;
+            // Who makes Kotoba: the app, and a sentence naming the studio
+            // and its two owners, each name a link to where they are found;
+            // then the updates.
+            "about" => {
                 let current = update::current_version();
+                // Under the credits, the updates, as little as possible:
+                // what a check found, and one button that is "Check for
+                // updates" until a check finds something and "Update to
+                // x" after, in the same place, with "Release notes" under
+                // the row's name then.
+                let u = &self.update;
                 let update_line = if u.installing {
                     match u.progress {
                         Some((done, Some(total))) if total > 0 => tf("Downloading… {p}%", &[("p", &(done * 100 / total))]),
@@ -234,7 +238,7 @@ impl Kotoba {
                 } else {
                     String::new()
                 };
-                let can_install = u.available.is_some() && !u.installing && update::asset_name().is_some();
+                let can_install = u.available.is_some() && !u.installing;
                 let (checking, installing) = (u.checking, u.installing);
                 let notes_url = u.available.as_deref().map(update::release_page);
                 let press = |id: &'static str, label: SharedString, kind: Press, off: bool| small_pill(id, "icons/redo-2.svg", label, kind, off, &theme).h(px(28.)).w(UPDATE_W).justify_center();
@@ -245,8 +249,8 @@ impl Kotoba {
                 } else {
                     press("update-check", if checking { t("Checking…") } else { t("Check for updates") }.into(), Press::Quiet, checking).on_click(cx.listener(|this, _, _, cx| this.check_updates_now(cx))).into_any_element()
                 };
-                let version_detail: SharedString = if update_line.is_empty() { format!("Kotoba {current}") } else { format!("Kotoba {current} · {update_line}") }.into();
-                let version_note = v_flex().gap(px(1.)).child(div().child(version_detail)).when_some(notes_url, |d, url| {
+                let found = (!update_line.is_empty()).then(|| div().child(update_line));
+                let update_note = (found.is_some() || notes_url.is_some()).then(|| v_flex().gap(px(1.)).children(found).when_some(notes_url, |d, url| {
                     d.child(
                         div()
                             .id("update-notes")
@@ -259,14 +263,9 @@ impl Kotoba {
                             .on_click(move |_, _, cx| cx.open_url(&url))
                             .child(t("Release notes")),
                     )
-                });
+                }));
                 let auto_check = self.switch("update-auto", app.check_updates, Rc::new(|this, on, _, cx| this.set_check_updates(on, cx)), cx);
-                vec![group(None, None, vec![line(t("Version"), Some(version_note.into_any_element()), button, &theme), line(t("Check automatically"), said(t("Once a day. Nothing is installed without you.")), auto_check, &theme)], &theme)]
-            }
-            // Who makes Kotoba: the app, and a sentence naming the studio
-            // and its two owners, each name a link to where they are found.
-            "about" => {
-                let current = update::current_version();
+                let updates = group(None, None, vec![line(t("Updates"), update_note.map(|n| n.into_any_element()), button, &theme), line(t("Check automatically"), said(t("Once a day. Nothing is installed without you.")), auto_check, &theme)], &theme);
                 let link = |id: &'static str, name: &'static str, url: &'static str| {
                     div()
                         .id(id)
@@ -299,7 +298,7 @@ impl Kotoba {
                         .child(div().id("about-icon").mt(px(18.)).cursor_pointer().hover(|s| s.opacity(0.82)).on_click({
                             let site = site.clone();
                             move |_, _, cx| cx.open_url(&site)
-                        }).child(img("icon/app-large.png").size(px(88.)).flex_shrink_0()))
+                        }).child(img("icon/icon-512.png").size(px(88.)).flex_shrink_0()))
                         .child(
                             div()
                                 .id("about-name")
@@ -330,6 +329,7 @@ impl Kotoba {
                         ))
                         .child(h_flex().gap(px(8.)).child(go("about-source", "icons/github.svg", "GitHub", site.clone())).child(go("about-notes", "icons/file-text.svg", t("Release Notes"), update::release_page(current))))
                         .into_any_element(),
+                    updates,
                 ]
             }
             // Every section is one of `SECTIONS` (`show_settings`).
@@ -365,7 +365,6 @@ impl Kotoba {
                         match section {
                             "models" => "title-models",
                             "customize" => "title-customize",
-                            "updates" => "title-updates",
                             "about" => "title-about",
                             _ => "title-general",
                         },
@@ -393,7 +392,6 @@ impl Kotoba {
                                         match section {
                                             "models" => "page-models",
                                             "customize" => "page-customize",
-                                            "updates" => "page-updates",
                                             "about" => "page-about",
                                             _ => "page-general",
                                         },
@@ -407,12 +405,12 @@ impl Kotoba {
 
     /// The rail of sections at the window's left, under its traffic
     /// lights: an icon and a name per section, the chosen one on a plate.
-    /// General wears a dot while a permission is not given, and Updates
+    /// General wears a dot while a permission is not given, and About
     /// while a newer Kotoba waits.
     fn settings_rail(&self, cx: &mut Context<Self>) -> AnyElement {
         let theme = cx.theme().clone();
         let current = self.section;
-        let wanting = kotoba_core::dictate::AVAILABLE && !self.all_allowed();
+        let wanting = !self.all_allowed();
         let update_waiting = self.update.available.is_some();
         Self::drag_region(
             v_flex()
@@ -430,7 +428,7 @@ impl Kotoba {
         .children(SECTIONS.iter().map(|(key, label, icon)| {
             let active = *key == current;
             let key: &'static str = key;
-            let dot = (key == "general" && wanting) || (key == "updates" && update_waiting);
+            let dot = (key == "general" && wanting) || (key == "about" && update_waiting);
             h_flex()
                 .id(SharedString::from(format!("settings-nav-{key}")))
                 .h(px(30.))
@@ -489,9 +487,6 @@ impl Kotoba {
     /// models, and why a download stopped.
     fn models_rows(&mut self, cx: &mut Context<Self>) -> Vec<AnyElement> {
         let theme = cx.theme().clone();
-        if !kotoba_core::dictate::AVAILABLE {
-            return vec![div().text_size(px(13.5)).text_color(theme.muted_foreground).child(t("Dictation is on a Mac only for now.")).into_any_element()];
-        }
         let mut rows = vec![self.dictate_lane(Lane::Speech, cx), self.dictate_lane(Lane::Clean, cx)];
         rows.extend(self.dictate_dl_error.clone().map(|e| div().px(px(14.)).text_size(px(12.)).text_color(theme.danger).child(e).into_any_element()));
         rows
@@ -677,7 +672,7 @@ impl Kotoba {
             Lane::Clean => t("Post-processing"),
         };
         let models = lane.models();
-        // Post-processing off: its name and its models fade to grey, over a
+        // Post-processing off: its name and its models fade to gray, over a
         // moment; the switch stays as it is.
         let live = lane == Lane::Speech || (self.cfg.app.clean_on && in_use.is_some());
         let fade = self.presence(&format!("lane-live-{}", lane.key()), live, cx);
@@ -714,7 +709,7 @@ impl Kotoba {
         let mark = if m.maker == "Qwen" { "icons/makers/qwen.svg" } else { "icons/makers/openai.svg" };
         let size = if m.bytes >= 1_000_000_000 { format!("{:.1} GB", m.bytes as f64 / 1e9) } else { format!("{} MB", m.bytes / 1_000_000) };
         let slot = |el: AnyElement| div().w(MODEL_SLOT_W).flex_shrink_0().flex().justify_center().child(el).into_any_element();
-        // Post-processing turned off is grey throughout: no accent, no red.
+        // Post-processing turned off is gray throughout: no accent, no red.
         let pill = |id: String, icon: &'static str, word: &'static str, kind: Press| small_pill(SharedString::from(id), icon, word, if resting { Press::Quiet } else { kind }, false, &theme).h(px(28.)).w(MODEL_SLOT_W).px(px(8.)).justify_center();
         let (first, second): (Option<AnyElement>, AnyElement) = if let Some((got, stop)) = coming {
             let share = (got as f32 / m.bytes.max(1) as f32).clamp(0.0, 1.0);
@@ -916,7 +911,7 @@ impl Kotoba {
             .cursor_pointer()
             .text_color(theme.muted_foreground)
             .hover(|s| s.bg(theme.muted).text_color(theme.foreground))
-            .managed_tooltip(|window, cx| tip(if cfg!(target_os = "macos") { t("Open in Finder") } else { t("Open folder") }, window, cx))
+            .managed_tooltip(|window, cx| tip(t("Open in Finder"), window, cx))
             .when(!gone, |d| {
                 d.on_click(|_, window, cx| {
                     swallow_click(window, cx);

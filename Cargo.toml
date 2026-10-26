@@ -17,7 +17,7 @@ dirs = "5"
 chrono = { version = "0.4", features = ["serde"] }
 
 [profile.dev]
-# gpui's dependency tree is huge; a little optimisation keeps the UI usable in dev.
+# gpui's dependency tree is huge; a little optimization keeps the UI usable in dev.
 opt-level = 1
 
 [profile.dev.package."*"]

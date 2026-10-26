@@ -1,14 +1,16 @@
 #!/bin/zsh
-# The macOS release build, the way Pingfan's other apps ship: a Developer ID
-# signature with the hardened runtime, a disk image laid out by Finder (the
-# app, an arrow, the Applications link, over scripts/dmg/background.png),
-# and (with --notarize) notarization and stapling. One script for a laptop,
-# where the notarytool keychain profile does the talking, and for CI, where
-# the identity comes from secrets (see .github/workflows/release.yml).
+# The macOS release build: a Developer ID signature with the hardened
+# runtime, a disk image laid out by Finder (the app, an arrow, the
+# Applications link, over scripts/dmg/background.png), and (with
+# --notarize) notarization and stapling. One script for a laptop, where the
+# notarytool keychain profile does the talking, and for CI, where the
+# identity comes from secrets (see .github/workflows/release.yml).
 #
 #   scripts/release-mac.sh [--target <triple>] [--no-build] [--identity <name>|-]
 #                          [--notarize] [--out <path.dmg>]
 #
+#   --identity <name>  the signing identity; else $KOTOBA_SIGN_IDENTITY, else
+#                  the first "Developer ID Application" identity in the keychain
 #   --identity -   ad-hoc signature (a fork or a machine without the certificate)
 #   --notarize     xcrun notarytool with APPLE_ID/APPLE_APP_PASSWORD/APPLE_TEAM_ID
 #                  when set, else the keychain profile $NOTARY_PROFILE
@@ -17,7 +19,7 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 export PATH="$HOME/.cargo/bin:$PATH"
 
-IDENTITY="${KOTOBA_SIGN_IDENTITY:-Developer ID Application: Pingfan Hu (XC2WL5WN7J)}"
+IDENTITY="${KOTOBA_SIGN_IDENTITY:-}"
 NOTARY_PROFILE="${NOTARY_PROFILE:-notarytool-profile}"
 TARGET=""; BUILD=1; NOTARIZE=0; OUT=""
 while [[ $# -gt 0 ]]; do
@@ -30,6 +32,14 @@ while [[ $# -gt 0 ]]; do
     *) echo "unknown option $1" >&2; exit 2 ;;
   esac
 done
+
+# The identity is read from the keychain, never written here: the same
+# script signs for whoever holds the certificate.
+if [[ -z "$IDENTITY" ]]; then
+  IDENTITY=$(security find-identity -v -p codesigning 2>/dev/null \
+    | sed -n 's/.*"\(Developer ID Application: [^"]*\)".*/\1/p' | head -1)
+  [[ -n "$IDENTITY" ]] || { echo "release-mac: no Developer ID Application identity in the keychain; set KOTOBA_SIGN_IDENTITY or pass --identity -" >&2; exit 1; }
+fi
 
 case "${TARGET:-$(uname -m)}" in
   aarch64*|arm64) ARCH=arm64 ;;
@@ -65,7 +75,7 @@ codesign --verify --deep --strict --verbose=2 "$APP"
 
 # The disk image. Finder lays the window out on a read-write image (the
 # layout lives in the volume's .DS_Store, and only Finder writes one Finder
-# will honour), then hdiutil compresses it read-only. The window is 660x420
+# will honor), then hdiutil compresses it read-only. The window is 660x420
 # points over scripts/dmg/background.png, which is that size at 2x.
 VOLNAME="Kotoba v$VERSION"
 STAGE=dist/dmg-staging

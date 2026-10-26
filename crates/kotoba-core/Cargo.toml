@@ -18,9 +18,7 @@ sha2 = "0.10"
 
 # Dictation (`dictate.rs`): transcribe.cpp (MIT, ggml's runtime, Metal
 # on Apple silicon) runs every model offered, Qwen3-ASR and Whisper
-# alike; and the microphone. A Mac's alone for now: transcribe.cpp
-# is built by CMake, which the Windows type check from a Mac cannot run.
-[target.'cfg(target_os = "macos")'.dependencies]
+# alike; and the microphone.
 transcribe-cpp = "0.4"
 cpal = "0.18"
 # Named for its include directory alone: build.rs compiles libllama for

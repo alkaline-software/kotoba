@@ -2,11 +2,7 @@
 //! app starts it, a local model writes down what was said, and the words
 //! are pasted where the cursor is. A menu bar app: a click on its item
 //! opens the settings window, Kotoba's only window, and the other click
-//! its menu.
-//!
-//! Dictation is a Mac's alone for now; elsewhere the window builds and
-//! says so, and what only dictation uses is left unused there.
-#![cfg_attr(not(target_os = "macos"), allow(dead_code))]
+//! its menu. It runs on macOS alone.
 
 mod assets;
 mod controls;
@@ -14,11 +10,11 @@ mod fonts;
 mod i18n;
 mod kotoba;
 mod look;
-#[cfg(target_os = "macos")]
 mod pill;
+mod scroll;
 mod settings;
 mod sys;
-mod ui;
+mod widgets;
 
 use gpui::*;
 use kotoba::{CloseWindow, Dictate, Escape, Kotoba, KEY_CONTEXT};
@@ -100,7 +96,7 @@ pub fn menu_lines() -> Vec<sys::MenuLine> {
         Ok(Some(std::borrow::Cow::Borrowed(bytes))) => bytes,
         _ => &[],
     };
-    let mut lines: Vec<sys::MenuLine> = kotoba::SECTIONS.iter().map(|&(key, title, path)| sys::MenuLine { key, title: i18n::t(title), icon: icon(path), keys: "", gap: key == "updates" }).collect();
+    let mut lines: Vec<sys::MenuLine> = kotoba::SECTIONS.iter().map(|&(key, title, path)| sys::MenuLine { key, title: i18n::t(title), icon: icon(path), keys: "", gap: key == "about" }).collect();
     lines.push(sys::MenuLine { key: "quit", title: i18n::t("Quit Kotoba"), icon: icon("icons/logout.svg"), keys: "q", gap: true });
     lines
 }
@@ -118,7 +114,7 @@ fn main() {
     });
     app.run(move |cx: &mut App| {
         gpui_component::init(cx);
-        i18n::set(&i18n::chosen(&kotoba_core::config::Config::load().app.language));
+        i18n::set(&i18n::chosen());
         sys::stay_in_menu_bar();
         // One Kotoba at a time, the one opened last, before this one's tap
         // takes the key. A probe copy, with a home of its own, leaves the
@@ -196,7 +192,7 @@ fn main() {
             if let Some(section) = asked {
                 let section = kotoba::SECTIONS.iter().find(|(key, _, _)| *key == section).map(|(key, _, _)| *key);
                 k.show_settings(section.or(Some("general")), cx);
-            } else if first && kotoba_core::dictate::AVAILABLE && !(crate::sys::trusted() && crate::sys::mic() == sys::Mic::Allowed) {
+            } else if first && !(crate::sys::trusted() && crate::sys::mic() == sys::Mic::Allowed) {
                 k.show_settings(Some("general"), cx);
             }
         });
