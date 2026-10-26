@@ -22,6 +22,28 @@ The names never change, so `releases/latest/download/<name>` links stay valid. K
 - The notarytool keychain profile `notarytool-profile` (`xcrun notarytool store-credentials notarytool-profile` once, with the Apple ID, an app-specific password and the team ID); `NOTARY_PROFILE` names another.
 - `gh auth login` with write access to the repository.
 - For the disk image's background: Python with Pillow (`uv run --with pillow …`) and LXGW WenKai Medium in `~/Library/Fonts`.
+- For an agent to cut a release without stopping: the allow rules in `.claude/settings.local.json` (An agent cutting the release).
+
+## An agent cutting the release
+
+Claude Code's auto mode judges each command, and it may refuse one that changes something outside the Mac, a release made public above all: v0.1.4 stopped at step 6 for the person to run `scripts/release-publish.sh`. A command that matches an allow rule runs without that judgment. The rules are the person's to write, in `.claude/settings.local.json` in the checkout (git ignores it): auto mode refuses an agent that writes its own permissions.
+
+```json
+{
+  "permissions": {
+    "allow": [
+      "Bash(scripts/release-check.sh *)",
+      "Bash(scripts/release-mac.sh *)",
+      "Bash(scripts/release-publish.sh *)",
+      "Bash(scripts/release-clean.sh)",
+      "Bash(git tag -a v*)",
+      "Bash(git push origin refs/tags/v*)"
+    ]
+  }
+}
+```
+
+The commands of Redoing a release are left out on purpose: they delete a published release and its tag, and the person allows them for one redo or runs them. Without a rule an agent asks the person to run the step with `!` in the prompt (`! scripts/release-publish.sh X.Y.Z`), which runs it in the session, and goes on from its output.
 
 ## Each release
 
@@ -114,7 +136,7 @@ git tag -d vX.Y.Z
 git push origin :refs/tags/vX.Y.Z
 ```
 
-An agent's auto mode refuses these as destructive unless the person allowed them; otherwise the person runs them.
+An agent's auto mode refuses these as destructive unless the person allowed them (`Bash(gh release delete v*)`, `Bash(git tag -d v*)`, `Bash(git push origin :refs/tags/v*)` in `.claude/settings.local.json`); otherwise the person runs them.
 
 ## Signing in CI
 

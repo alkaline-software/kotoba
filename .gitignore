@@ -22,3 +22,6 @@ __pycache__/
 target/
 /dist
 /vendor/*/Cargo.lock
+
+# Claude Code: this checkout's own permissions (docs/release.md, An agent cutting the release).
+.claude/settings.local.json
