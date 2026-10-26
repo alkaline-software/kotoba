@@ -336,7 +336,7 @@ so it is caught before the tag next time.
   `git push origin refs/tags/vX.Y.Z`, as step 4 now does. Once the tag
   exists, Git calls such a branch `heads/vX.Y.Z`, and a Git app may list
   it as a second, unpublished branch. Name a release's branch apart
-  from its tag (`dev/vX.Y.Z`).
+  from its tag: `vX.Y.Z-<what it is>`, as in `v0.1.3-more-development`.
 - **"Cargo.toml says X but the tag is vY"**: the version and the tag
   disagree. Fix `Cargo.toml`, commit, redo the tag.
 - **"CHANGELOG.md has no section '## vX.Y.Z'"**: add it, commit, redo the tag.
