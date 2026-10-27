@@ -5,7 +5,7 @@
 1. **Updates in About.** Checking for and installing updates moved into About, under the credits, and the rail has one section fewer.
 2. **A calmer green.** The accent is a deeper green in the light appearance and a softer one in the dark, so the words on a green button are easier to read.
 3. **For the Mac alone.** Kotoba is made for macOS on Apple silicon and Intel; the Windows and Linux downloads are gone.
-4. **Fixes.** Every icon in the window is now drawn in the same set.
+4. **Fixes.** Every icon in the window is now drawn in the same set, and closing the settings no longer makes the menu bar jump.
 
 ## v0.1.3
 

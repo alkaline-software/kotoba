@@ -1019,12 +1019,84 @@ pub fn stay_in_menu_bar() {
 /// In the Dock and ⌘-Tab while the settings window is open, as any app
 /// with a window is, so it is found again once another app covers it;
 /// back to the menu bar alone when it closes.
+///
+/// An app that leaves the Dock while it is the active one makes the whole
+/// menu bar jump. So it first hands the front to the app behind, and
+/// leaves the Dock once the system says it is no longer the active one
+/// (`docs/window.md`).
 pub fn in_dock(on: bool) {
     use objc2::MainThreadMarker;
-    use objc2_app_kit::{NSApplication, NSApplicationActivationPolicy};
+    use objc2_app_kit::{NSApplication, NSApplicationActivationOptions, NSApplicationActivationPolicy};
     let Some(mtm) = MainThreadMarker::new() else { return };
-    let policy = if on { NSApplicationActivationPolicy::Regular } else { NSApplicationActivationPolicy::Accessory };
-    NSApplication::sharedApplication(mtm).setActivationPolicy(policy);
+    let app = NSApplication::sharedApplication(mtm);
+    LEAVE_DOCK.set(false);
+    if on {
+        app.setActivationPolicy(NSApplicationActivationPolicy::Regular);
+        return;
+    }
+    if app.isActive() {
+        if let Some(behind) = app_behind() {
+            watch_resign();
+            LEAVE_DOCK.set(true);
+            if behind.activateWithOptions(NSApplicationActivationOptions::empty()) {
+                return;
+            }
+            LEAVE_DOCK.set(false);
+        }
+    }
+    app.setActivationPolicy(NSApplicationActivationPolicy::Accessory);
+}
+
+thread_local! {
+    /// The Dock is to be left once the app is no longer the active one.
+    static LEAVE_DOCK: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
+    static RESIGN_WATCHED: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
+}
+
+/// The app whose window is frontmost on the screen, other than this one,
+/// as the system would put in front: Finder, the desktop's, when no
+/// other app has a window there.
+fn app_behind() -> Option<objc2::rc::Retained<objc2_app_kit::NSRunningApplication>> {
+    use objc2::rc::Retained;
+    use objc2_app_kit::NSRunningApplication;
+    use objc2_foundation::{NSArray, NSDictionary, NSNumber, NSString};
+    #[link(name = "CoreGraphics", kind = "framework")]
+    extern "C" {
+        fn CGWindowListCopyWindowInfo(option: u32, relative_to: u32) -> *mut NSArray<NSDictionary<NSString, objc2::runtime::AnyObject>>;
+    }
+    let mine = std::process::id() as i32;
+    let number = |w: &NSDictionary<NSString, objc2::runtime::AnyObject>, key: &str| w.objectForKey(&NSString::from_str(key)).and_then(|v| v.downcast::<NSNumber>().ok()).map(|n| n.doubleValue());
+    // On the screen only, desktop pictures and icons left out; front first.
+    let windows = unsafe { Retained::from_raw(CGWindowListCopyWindowInfo(1 | 1 << 4, 0)) }?;
+    let pid = windows.iter().find_map(|w| {
+        let pid = number(&w, "kCGWindowOwnerPID")? as i32;
+        (pid != mine && number(&w, "kCGWindowLayer")? == 0. && number(&w, "kCGWindowAlpha").unwrap_or(1.) > 0.).then_some(pid)
+    });
+    match pid {
+        Some(pid) => NSRunningApplication::runningApplicationWithProcessIdentifier(pid),
+        None => NSRunningApplication::runningApplicationsWithBundleIdentifier(&NSString::from_str("com.apple.finder")).firstObject(),
+    }
+}
+
+/// Each time the app stops being the active one, the Dock left when
+/// `in_dock(false)` asked for it. Watched from the first close on.
+fn watch_resign() {
+    use objc2::MainThreadMarker;
+    use objc2_app_kit::{NSApplication, NSApplicationActivationPolicy, NSApplicationDidResignActiveNotification};
+    use objc2_foundation::{NSNotification, NSNotificationCenter, NSOperationQueue};
+    if RESIGN_WATCHED.replace(true) {
+        return;
+    }
+    let block = block2::RcBlock::new(move |_: std::ptr::NonNull<NSNotification>| {
+        let Some(mtm) = MainThreadMarker::new() else { return };
+        if LEAVE_DOCK.replace(false) {
+            NSApplication::sharedApplication(mtm).setActivationPolicy(NSApplicationActivationPolicy::Accessory);
+        }
+    });
+    let center = NSNotificationCenter::defaultCenter();
+    let observer = unsafe { center.addObserverForName_object_queue_usingBlock(Some(NSApplicationDidResignActiveNotification), None, Some(&NSOperationQueue::mainQueue()), &block) };
+    // Kept for the app's life, as the key monitor is.
+    std::mem::forget(observer);
 }
 
 /// Where the app stands with the microphone.
