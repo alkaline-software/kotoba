@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.1.5
+
+1. **The icon's ground.** The leaf stands on the Alkaline Software cream washed with a fifth of Kotoba's green, as every icon of the studio's does, so the Dock tells them apart by their grounds.
+
 ## v0.1.4
 
 1. **Updates in About.** Checking for and installing updates moved into About, under the credits, and the rail has one section fewer.

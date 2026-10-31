@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """The disk image's Finder background: "Drag Kotoba to Applications" over the
-app's cream, with a green arrow between where the app icon and the
+app's page color, with a green arrow between where the app icon and the
 Applications link sit. 1320x840 pixels at 144 dpi, which Finder shows as
 the 660x420 window release-mac.sh opens. Needs Pillow and LXGW WenKai
 Medium (the face Pingfan's other apps' disk images use); the PNG beside
@@ -13,13 +13,13 @@ from pathlib import Path
 from PIL import Image, ImageDraw, ImageFont
 
 W, H = 1320, 840
-CREAM = (250, 249, 245)        # the app's background, #FAF9F5
+PAGE = (251, 251, 250)         # the app's page, #FBFBFA
 INK = (31, 30, 29)             # the app's foreground, #1F1E1D
-GREEN = (81, 159, 92)          # the app's accent, #519F5C
+GREEN = (70, 118, 76)          # the app's accent in the light appearance, #46764C
 FONT = Path.home() / "Library/Fonts/LXGWWenKai-Medium.ttf"
 OUT = Path(__file__).with_name("background.png")
 
-img = Image.new("RGB", (W, H), CREAM)
+img = Image.new("RGB", (W, H), PAGE)
 draw = ImageDraw.Draw(img)
 
 text = "Drag Kotoba to Applications"

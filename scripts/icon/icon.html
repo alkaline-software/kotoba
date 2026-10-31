@@ -55,7 +55,26 @@
 <script>
 // The icon is drawn in a 100-unit box. `bleed` fills the whole canvas as a
 // square; otherwise the body is an inset squircle with a shadow (the app icon).
+// The navy, the amber and the violet spark are the studio's and the same in
+// every icon. GREEN is Kotoba's accent, the leaf's green, in the one place
+// the subject has for a color of its own. The ground is the studio's cream
+// with a fifth of the accent in it (`ground`): ACCENT_LIGHT and ACCENT_DARK
+// are the accent's base shades in the two appearances (look.rs).
 const NAVY = '#2b2556', AMBER = '#ffb83e', VIOLET = '#6a3fd9', GREEN = '#8cc992';
+const ACCENT_LIGHT = '#46764C', ACCENT_DARK = '#88B98C';
+const CREAM = ['#fdf8ee', '#f1e4d0'];   // the studio's ground, top left to bottom right
+
+// The ground with the accent in it: each end of the cream mixed with the
+// mean of the accent's two base shades, 16% at the top left and 24% at the
+// bottom right, so the wash deepens toward the shadowed corner.
+function ground(light = ACCENT_LIGHT, dark = ACCENT_DARK) {
+  const rgb = hex => [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16));
+  const hex = c => '#' + c.map(v => Math.round(Math.max(0, Math.min(255, v))).toString(16).padStart(2, '0')).join('');
+  const [l, d] = [rgb(light), rgb(dark)];
+  const accent = l.map((v, i) => (v + d[i]) / 2);
+  const mix = (base, t) => hex(rgb(base).map((v, i) => v + (accent[i] - v) * t));
+  return [mix(CREAM[0], 0.16), mix(CREAM[1], 0.24)];
+}
 
 const stroke = (ctx, pts, style, width, cap = 'round') => {
   ctx.strokeStyle = style; ctx.lineWidth = width; ctx.lineCap = cap; ctx.lineJoin = 'round';
@@ -165,8 +184,8 @@ function drawTemplate(canvas, px) {
 const ICONS = [
   {
     id: 'kotoba', name: 'Leaf of words',
-    desc: 'Kotoba, 言葉, is written "say" and "leaf". The icon is a leaf set at 45 degrees and drawn from three arcs: its two edges and a midrib halfway between them, so the leaf bends as one piece. The stalk carries the midrib\'s arc on past the base and curls back like the tail of a speech bubble. Its veins are the bars of a sound wave, at even steps along the midrib and square to it, swelling to the amber bar in the middle and falling away as a voice does. At 32 px and below the bars would blur together, so the midrib is drawn in amber instead. The spark is the small model on this Mac that tidies what was said. The ground and the line colours are those of the Alkaline Software icon, as in Emaki; the green of the leaf is Kotoba\'s accent, where Emaki has terracotta.',
-    bg: ['#fdf8ee', '#f1e4d0'],   // top left to bottom right
+    desc: 'Kotoba, 言葉, is written "say" and "leaf". The icon is a leaf set at 45 degrees and drawn from three arcs: its two edges and a midrib halfway between them, so the leaf bends as one piece. The stalk carries the midrib\'s arc on past the base and curls back like the tail of a speech bubble. Its veins are the bars of a sound wave, at even steps along the midrib and square to it, swelling to the amber bar in the middle and falling away as a voice does. At 32 px and below the bars would blur together, so the midrib is drawn in amber instead. The spark is the small model on this Mac that tidies what was said. The lines are the Alkaline Software icon\'s, as in Emaki, and the ground its cream with a fifth of the accent in it; the green of the leaf is Kotoba\'s accent, where Emaki has terracotta.',
+    bg: ground(),   // the cream with the accent in it, top left to bottom right
     glyph(ctx) {
       leaf(ctx);
       wave(ctx);

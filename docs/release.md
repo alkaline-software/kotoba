@@ -154,7 +154,7 @@ rm /tmp/cert.p12
 
 ## The disk image
 
-`release-mac.sh` makes a read-write image, mounts it, and has Finder set the 660 by 420 window, the 128 pt icons at 165 and 495, and the background, then converts it to a compressed read-only image. Only Finder writes a `.DS_Store` Finder honors, so the layout is not generated offline; this works on the GitHub macOS runners too. The background is `scripts/dmg/background.png`, 1320 by 840 at 2x, drawn by `scripts/dmg/background.py` in the app's cream and green ("Drag Kotoba to Applications" and an arrow). The PNG is committed; run the script only when the picture changes. The app icon and the menu bar image are in `docs/look.md`.
+`release-mac.sh` makes a read-write image, mounts it, and has Finder set the 660 by 420 window, the 128 pt icons at 165 and 495, and the background, then converts it to a compressed read-only image. Only Finder writes a `.DS_Store` Finder honors, so the layout is not generated offline; this works on the GitHub macOS runners too. The background is `scripts/dmg/background.png`, 1320 by 840 at 2x, drawn by `scripts/dmg/background.py` in the app's page color and its green ("Drag Kotoba to Applications" and an arrow). The PNG is committed; run the script only when the picture changes. The app icon and the menu bar image are in `docs/look.md`.
 
 ## When something fails
 

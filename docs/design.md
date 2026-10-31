@@ -15,9 +15,9 @@ The standard every part of Kotoba a person sees is held to: the settings window,
 - **One way to draw each thing.** A setting is a row on a card (`line`, `group`); on or off is a switch; a choice among a few is `segmented`; a list of many drops down (`settings_pick_h`); a button is a pill with an icon (`widgets::small_pill`, `widgets::choice_pill`); a key is a cap. A new control is a new pattern for every page, or it is not made.
 - **Things line up.** Names start on one line, controls end on another, and the widest controls on a page start and end together. Every field, button and choice in a row is one height.
 - **Every language.** A label never depends on English being short: controls grow to their words, and a page that fits in English fits in French and German. Each language is written as its own Mac writes it, in its own punctuation and with the system's names for its settings.
-- **Both appearances, every state.** Light and dark are designed together, never one inverted. A change is looked at in both, and in every state it has: empty, full, refused, waiting, off, hover, pressed, mid-motion.
+- **Both appearances, every state.** Light and dark are designed together, never one inverted: every color has a value in each. A change is looked at in both, and in every state it has: empty, full, refused, waiting, off, hover, pressed, mid-motion, the window at its smallest (700 by 460).
 - **Readable.** Words read on their ground at 4.5 to 1 or better, a control's edge at 3 to 1. A key is drawn as a key, never as code.
-- **Look before saying it is done.** At all the change shows, hides or moves, in both appearances (Checking).
+- **Look before saying it is done.** At all the change shows, hides or moves, in both appearances and in the window at its smallest (Checking).
 
 ## The window
 
