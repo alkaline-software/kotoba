@@ -2,7 +2,12 @@
 
 ## v0.1.5
 
-1. **The icon's ground.** The leaf stands on the Alkaline Software cream washed with a fifth of Kotoba's green, as every icon of the studio's does, so the Dock tells them apart by their grounds.
+1. **Escape while it writes.** Esc now stops a dictation after you finish speaking too, up to the moment the words appear: nothing is pasted or kept in the history.
+2. **A neater pill.** The pill is as tall as the menu bar, its sides curve into the top of the screen, and it slides in every time, also when you start dictating after a pause.
+3. **About and the settings' size.** About shows 言葉 beside the name and only the studio's name, and the settings window is the size of every Alkaline Software app. History moved to Customize.
+4. **The icon's ground.** The leaf stands on the Alkaline Software cream washed with a fifth of Kotoba's green, as every icon of the studio's does, so the Dock tells them apart by their grounds.
+5. **Quicker post-processing.** After the first dictation, a short one is post-processed in about a third of the time, with the same words as before.
+6. **Smoother all round.** A long history scrolls and hovers smoothly, the pill uses less while the words are written, and a model at work can no longer hold up typing in other apps.
 
 ## v0.1.4
 
