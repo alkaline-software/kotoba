@@ -12,6 +12,7 @@ About `crates/kotoba-app/src/look.rs`, `fonts.rs`, `assets.rs`, `widgets.rs`, `a
 - Write settings through `Config::edit`, which writes a temp file and renames it.
 - A clip in gpui is a rectangle: a ground that reaches a rounded card's corner is rounded there itself.
 - A color that is not in the theme file or `look.rs` is a mistake.
+- The faces the system has are found once, at launch (`fonts::install`), and kept. Listing every installed face takes about a tenth of a second on a Mac with many fonts. A hover draws the window whole, so asked as About drew it held each frame that long, 105 ms against 2, and with it every key and click the event tap sees, on the main thread, in every app.
 
 ## The palette
 
@@ -31,4 +32,4 @@ Tabler's outline icons at a stroke of 1.75, each under the name the toolkit or t
 
 ## The faces
 
-Words are the system's face. The app's name on About is in Optima, else Avenir Next (the Mac's own, never carried), else Belleza, carried under the SIL Open Font License (`fonts.rs`).
+Words are the system's face. The app's name on About is in Optima, else Avenir Next (the Mac's own, never carried), else Belleza, carried under the SIL Open Font License (`fonts.rs`). 言葉 beside it is in Hiragino Mincho, the Mac's own, never carried.

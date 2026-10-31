@@ -33,7 +33,7 @@ The picture is taken from inside (`sys::shoot_window`): a process may capture it
 - `untrusted`: the permissions drawn as if neither were given.
 - `notice:<words_with_underscores>`: a notice.
 - `fnuse:<n>`: Fn's use read as `n` (0 is Do Nothing) in place of the Mac's. `dictatekey:<key>`: the key set (`dictatekey:tap:fn`). `reset`.
-- `key`: dictation's key pressed. `dictate:pretend`: the pill listening to a made-up voice. `pillshot:<png>`: a picture of the pill's window.
+- `escape`: Escape, as a press of it stops a dictation. `key`: dictation's key pressed. `dictate:pretend`: the pill listening to a made-up voice. `pillshot:<png>`: a picture of the pill's window.
 - `dictate:file:<wav>`: a 16-bit WAV written down by the model and delivered as the microphone's recording is (with a field of the window focused, into that field). `say -o x.aiff "…"` and `afconvert -f WAVE -d LEI16@16000 x.aiff x.wav` make one.
 - `away`: prints whether Accessibility is given, the tap on, and the microphone's status.
 - `KOTOBA_LANG=<code>` (an environment variable, not a step): the window in that language (`fr`, `de`, `zh-Hant`, …) in place of the system's. `language:<system|code>`: the language list's choice, as a press on it (in the bundle it changes the app's own `AppleLanguages`; set it back with `language:system`). `pick:language`: the list open.

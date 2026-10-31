@@ -12,6 +12,7 @@ use std::fs;
 use std::io::{Read, Write};
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
+use std::sync::Arc;
 use std::time::Duration;
 
 use sha2::{Digest, Sha256};
@@ -20,6 +21,38 @@ use crate::paths;
 
 /// The sample rate every model offered takes.
 pub const RATE: u32 = 16_000;
+
+/// A dictation's way out: set from anywhere, it stops the speech model
+/// where the model can be stopped (between Whisper's steps, between
+/// Qwen3-ASR's runs alone) and between pieces of the speech, and the
+/// clean-up's model between its tokens. Clones share one state.
+#[derive(Clone, Default)]
+pub struct Stop {
+    token: transcribe_cpp::CancelToken,
+    flag: Arc<AtomicBool>,
+}
+
+impl Stop {
+    pub fn stop(&self) {
+        self.token.cancel();
+        self.flag.store(true, Ordering::SeqCst);
+    }
+
+    pub fn stopped(&self) -> bool {
+        self.flag.load(Ordering::SeqCst)
+    }
+
+    /// For the speech model's session.
+    pub(crate) fn token(&self) -> &transcribe_cpp::CancelToken {
+        &self.token
+    }
+
+    /// For the clean-up's native loop, which reads it between tokens. The
+    /// caller holds `self` for as long as the pointer is used.
+    pub(crate) fn flag_ptr(&self) -> *const bool {
+        self.flag.as_ptr() as *const bool
+    }
+}
 
 /// A model that can be downloaded and spoken to.
 pub struct Model {
@@ -573,10 +606,18 @@ mod engine {
     /// and is let go after a while unused (`release_idle`).
     static LOADED: Mutex<Option<(String, transcribe_cpp::Model, Instant)>> = Mutex::new(None);
 
+    /// Held for as long as a model writes. A run's session holds the model
+    /// too, and some models can only be stopped between runs (Qwen3-ASR),
+    /// so `unload` waits here for it, or the process exits holding the
+    /// GPU's memory; and a dictation stopped by Escape is over before the
+    /// next one starts.
+    static RUN: Mutex<()> = Mutex::new(());
+
     /// Let the model go now. Before the process exits, always: Metal's
     /// device is torn down at exit, and ggml aborts the process if a model
     /// still holds its memory then.
     pub fn unload() {
+        let _run = RUN.lock().unwrap_or_else(|e| e.into_inner());
         *LOADED.lock().unwrap() = None;
     }
 
@@ -608,7 +649,8 @@ mod engine {
     /// were spoken in, told apart by the model. Empty when nothing was
     /// said. Blocking: a second or two for a minute of speech on Apple
     /// silicon.
-    pub fn transcribe(m: &Model, audio: &[f32], terms: &[String]) -> Result<String, String> {
+    pub fn transcribe(m: &Model, audio: &[f32], terms: &[String], stop: &super::Stop) -> Result<String, String> {
+        let _run = RUN.lock().unwrap_or_else(|e| e.into_inner());
         let Some(span) = speech_span(audio) else {
             return Ok(String::new());
         };
@@ -621,6 +663,7 @@ mod engine {
         let model = loaded(m)?;
         let longest = model.capabilities().map(|c| c.max_audio_ms).unwrap_or(0);
         let mut session = model.session().map_err(|e| e.to_string())?;
+        session.set_cancel_token(stop.token());
         // The person's terms, for the model to hear them as they are
         // spelled (`spell` makes sure of it after).
         let options = transcribe_cpp::RunOptions { vocabulary: terms.iter().map(|t| t.trim().to_string()).filter(|t| !t.is_empty()).collect(), ..Default::default() };
@@ -628,6 +671,9 @@ mod engine {
         // speech in pieces cut where it is quietest.
         let mut words = String::new();
         for piece in pieces(&audio, longest) {
+            if stop.stopped() {
+                break;
+            }
             let text = session.run(piece, &options).map_err(|e| e.to_string())?.text;
             let text = text.trim();
             if !text.is_empty() {

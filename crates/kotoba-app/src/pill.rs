@@ -18,11 +18,18 @@ pub const BARS: usize = 10;
 const EAR: f32 = 64.;
 /// A side as wide as a few words, for what is said in it.
 const EAR_SAID: f32 = 150.;
-/// The pill's height on a screen with no notch.
-const PLAIN_H: f32 = 32.;
+/// The pill's height while the menu bar is hidden. Otherwise it is the
+/// menu bar's own, or the notch's.
+const PLAIN_H: f32 = 30.;
+/// How far the pill's sides flare out as they meet the screen's top edge,
+/// as a notch's do, each side.
+const FLARE: f32 = 8.;
 const ENTER: Duration = Duration::from_millis(220);
 const LEAVE: Duration = Duration::from_millis(180);
 const GROW: Duration = Duration::from_millis(200);
+/// How often the wave moves while the words are written, about 30 times a
+/// second: writing can take a while, with the GPU at work on the model.
+const WAVE_TICK: Duration = Duration::from_millis(33);
 
 pub enum Phase {
     Listening,
@@ -50,9 +57,9 @@ pub fn open(cx: &mut App) -> Option<WindowHandle<Pill>> {
     let place = crate::sys::pill_place()?;
     let (middle, height) = match place.notch {
         Some((left, right, top)) => ((place.width - left - right).max(0.), top),
-        None => (8., PLAIN_H),
+        None => (8., if place.bar > 0. { place.bar } else { PLAIN_H }),
     };
-    let width = middle + 2. * EAR_SAID;
+    let width = middle + 2. * EAR_SAID + 2. * FLARE;
     let bounds = Bounds::new(point(px((place.width - width) / 2.), px(0.)), size(px(width), px(height)));
     let handle = cx
         .open_window(
@@ -90,8 +97,25 @@ impl Pill {
     pub fn set_phase(&mut self, phase: Phase, cx: &mut Context<Self>) {
         self.ear_from = self.ear_now();
         self.ear_since = Instant::now();
+        let wave = matches!(phase, Phase::Writing) && !matches!(self.phase, Phase::Writing);
         self.phase = phase;
         cx.notify();
+        if wave {
+            cx.spawn(async move |this, cx| loop {
+                cx.background_executor().timer(WAVE_TICK).await;
+                let on = this.update(cx, |pill, cx| {
+                    let on = matches!(pill.phase, Phase::Writing) && pill.leaving.is_none();
+                    if on {
+                        cx.notify();
+                    }
+                    on
+                });
+                if !on.unwrap_or(false) {
+                    break;
+                }
+            })
+            .detach();
+        }
     }
 
     /// The pill goes back up into the top edge, and its window closes
@@ -128,6 +152,28 @@ fn ease(t: f32) -> f32 {
     1. - (1. - t).powi(3)
 }
 
+/// The pill's shape, in black: wide at the top, where each side curves
+/// out into the screen's top edge, and rounded at the foot. A corner of
+/// a box rounds outward only, so the shape is drawn as one path.
+fn paint_shape(b: Bounds<Pixels>, foot: f32, window: &mut Window) {
+    let (flare, foot) = (px(FLARE), px(foot));
+    let (left, right, top, bottom) = (b.origin.x, b.origin.x + b.size.width, b.origin.y, b.origin.y + b.size.height);
+    let mut path = PathBuilder::fill();
+    path.move_to(point(left, top));
+    path.line_to(point(right, top));
+    path.curve_to(point(right - flare, top + flare), point(right - flare, top));
+    path.line_to(point(right - flare, bottom - foot));
+    path.curve_to(point(right - flare - foot, bottom), point(right - flare, bottom));
+    path.line_to(point(left + flare + foot, bottom));
+    path.curve_to(point(left + flare, bottom - foot), point(left + flare, bottom));
+    path.line_to(point(left + flare, top + flare));
+    path.curve_to(point(left, top), point(left + flare, top));
+    path.close();
+    if let Ok(path) = path.build() {
+        window.paint_path(path, gpui::black());
+    }
+}
+
 impl Render for Pill {
     fn render(&mut self, window: &mut Window, _cx: &mut Context<Self>) -> impl IntoElement {
         // How far down it has come: in from the top edge, and back up.
@@ -138,7 +184,7 @@ impl Render for Pill {
         let ear = self.ear_now();
         let growing = self.ear_since.elapsed() < GROW;
         let moving = self.leaving.is_some() || self.shown.elapsed() < ENTER;
-        if moving || growing || matches!(self.phase, Phase::Writing) {
+        if moving || growing {
             window.request_animation_frame();
         }
         let h = self.height;
@@ -168,13 +214,13 @@ impl Render for Pill {
             Phase::Said(words) => div().text_size(px(12.)).text_color(white.opacity(0.9)).whitespace_nowrap().child(words.clone()).into_any_element(),
         };
         div().size_full().flex().justify_center().child(
-            h_flex()
-                .mt(px(-h * (1. - shown)))
+            div().relative().flex_shrink_0().mt(px(-h * (1. - shown))).h(px(h)).w(px(self.middle + 2. * ear + 2. * FLARE)).child(canvas(|_, _, _| (), move |bounds, _, window, _| paint_shape(bounds, h * 0.42, window)).absolute().size_full()).child(
+                h_flex()
+                .absolute()
+                .top_0()
+                .left(px(FLARE))
                 .h(px(h))
                 .w(px(self.middle + 2. * ear))
-                .bg(gpui::black())
-                .rounded_bl(px(h * 0.42))
-                .rounded_br(px(h * 0.42))
                 .overflow_hidden()
                 .child(h_flex().w(px(ear)).h_full().flex_shrink_0().pl(px(14.)).items_center().child(Icon::default().path("icons/wave-sine.svg").with_size(px(15.)).text_color(white)))
                 .child(div().w(px(self.middle)).flex_shrink_0())
@@ -190,6 +236,7 @@ impl Render for Pill {
                         .opacity(shown)
                         .child(div().child(content).with_animation(("pill-phase", phase), Animation::new(Duration::from_millis(180)), |d, t| d.opacity(t))),
                 ),
+            ),
         )
     }
 }

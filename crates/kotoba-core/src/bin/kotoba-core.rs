@@ -24,7 +24,7 @@ fn main() {
                 for words in lines {
                     let at = std::time::Instant::now();
                     let words = kotoba_core::dictate::avoid(&kotoba_core::dictate::spell(&words, &app.dictate_terms), &app.dictate_avoid);
-                    match clean::rewrite(m, &words, &app.clean_prompt, &app.dictate_terms) {
+                    match clean::rewrite(m, &words, &app.clean_prompt, &app.dictate_terms, &Default::default()) {
                         Ok(wrote) => {
                             let wrote = kotoba_core::dictate::avoid(&kotoba_core::dictate::spell(&wrote, &app.dictate_terms), &app.dictate_avoid);
                             let taken = clean::accept(&words, &wrote).is_some();
@@ -81,7 +81,7 @@ fn main() {
                         let at = std::time::Instant::now();
                         let app = kotoba_core::config::Config::load().app;
                         let terms = app.dictate_terms;
-                        match dictate::transcribe(m, &audio, &terms).map(|w| dictate::avoid(&dictate::spell(&w, &terms), &app.dictate_avoid)) {
+                        match dictate::transcribe(m, &audio, &terms, &Default::default()).map(|w| dictate::avoid(&dictate::spell(&w, &terms), &app.dictate_avoid)) {
                             Ok(words) => println!("{words}\n({:.1} s of sound in {:.1} s)", audio.len() as f32 / dictate::RATE as f32, at.elapsed().as_secs_f32()),
                             Err(e) => println!("no words: {e}"),
                         }

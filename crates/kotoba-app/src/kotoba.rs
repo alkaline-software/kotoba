@@ -27,8 +27,8 @@ use crate::widgets::{binding_signs, MENU_OUT};
 
 /// The settings window's size, and the least it is dragged to.
 pub const SETTINGS_W: Pixels = px(820.);
-pub const SETTINGS_H: Pixels = px(664.);
-const SETTINGS_MIN: Size<Pixels> = Size { width: px(700.), height: px(460.) };
+pub const SETTINGS_H: Pixels = px(600.);
+const SETTINGS_MIN: Size<Pixels> = Size { width: SETTINGS_W, height: px(460.) };
 
 /// The settings' sections, in the rail's order: key, name, icon.
 pub const SECTIONS: &[(&str, &str, &str)] = &[
@@ -244,6 +244,8 @@ pub struct Kotoba {
 
     // Dictation as it runs.
     pub dictation: Dictation,
+    /// The way out of the words being written, while they are.
+    writing: Option<dictate::Stop>,
     pub mic_levels: VecDeque<f32>,
     pub pill: Option<WindowHandle<crate::pill::Pill>>,
     pub tap_watch: dictate::TapWatch,
@@ -311,6 +313,9 @@ pub struct Kotoba {
     pub dictated: Option<(Rc<Vec<dictate::Said>>, u32)>,
     pub dictated_gone: Option<(Rc<Vec<dictate::Said>>, u32, Instant)>,
     pub dictated_serial: u32,
+    /// How tall each of the history's rows was drawn, once all were
+    /// (`said_in_view`).
+    pub said_tall: Rc<RefCell<Vec<f32>>>,
     /// Terms or the words to avoid, open on a sheet, and the one going.
     pub words_sheet: Option<(WordList, u32)>,
     pub words_gone: Option<(WordList, u32, Instant)>,
@@ -398,8 +403,14 @@ impl Kotoba {
         // newer Kotoba is made when it is due.
         cx.spawn(async move |this, cx| loop {
             cx.background_executor().timer(Duration::from_secs(60)).await;
-            dictate::release_idle(IDLE_MODEL);
-            kotoba_core::clean::release_idle(IDLE_MODEL);
+            // Off the main thread: a model at work holds its lock for as
+            // long as it writes, and every key and click on the Mac would
+            // wait here with the tap.
+            cx.background_spawn(async {
+                dictate::release_idle(IDLE_MODEL);
+                kotoba_core::clean::release_idle(IDLE_MODEL);
+            })
+            .await;
             if this.update(cx, |this, cx| this.check_updates_daily(cx)).is_err() {
                 break;
             }
@@ -409,6 +420,7 @@ impl Kotoba {
         let mut k = Kotoba {
             cfg,
             dictation: Dictation::Off,
+            writing: None,
             mic_levels: VecDeque::new(),
             pill: None,
             tap_watch: dictate::TapWatch::default(),
@@ -447,6 +459,7 @@ impl Kotoba {
             dictated: None,
             dictated_gone: None,
             dictated_serial: 0,
+            said_tall: Rc::new(RefCell::new(Vec::new())),
             words_sheet: None,
             words_gone: None,
             words_confirm: None,
@@ -634,14 +647,18 @@ impl Kotoba {
         }
     }
 
-    /// Escape while the microphone starts or listens: it stops, and what
-    /// it heard is let go unwritten, with no chime: the falling one says
-    /// the words are being written. False when there is nothing to stop,
-    /// so the key does what it does otherwise.
+    /// Escape while the microphone starts, while it listens, or while the
+    /// words are being written: it stops, and what was said is let go,
+    /// unwritten and out of the history, with no chime: the falling one
+    /// says the words are being written. False when there is nothing to
+    /// stop, so the key does what it does otherwise.
     pub fn cancel_dictation(&mut self, cx: &mut Context<Self>) -> bool {
         match self.dictation {
             Dictation::Starting => {}
             Dictation::Listening(..) => {}
+            // The models stop where they can, and what comes back from them
+            // is passed over (`write_down`).
+            Dictation::Writing => self.stop_writing(),
             _ => return false,
         }
         // The recorder dropped closes the microphone; one still starting
@@ -653,6 +670,13 @@ impl Kotoba {
         }
         cx.notify();
         true
+    }
+
+    /// The words being written given up on, by Escape or at quit.
+    pub fn stop_writing(&mut self) {
+        if let Some(stop) = self.writing.take() {
+            stop.stop();
+        }
     }
 
     /// The microphone on, off the main thread: the first time, the system
@@ -680,10 +704,12 @@ impl Kotoba {
                 self.pill = crate::pill::open(cx);
             }
             // The chime first and the microphone once it has mostly rung,
-            // so the chime is not in what it hears.
-            crate::sys::play_sound(DICTATE_START);
+            // so the chime is not in what it hears: counted from when it
+            // began, a moment on when the Mac's sound has been quiet.
+            let chimed = crate::sys::play_sound(DICTATE_START);
             cx.notify();
             cx.spawn(async move |this, cx| {
+                let _ = chimed.await;
                 cx.background_executor().timer(Duration::from_millis(300)).await;
                 let mic = this.update(cx, |this, _| this.cfg.app.dictate_mic.clone()).unwrap_or_default();
                 let rec = cx.background_executor().spawn(async move { dictate::Recorder::start(&mic) }).await;
@@ -739,8 +765,7 @@ impl Kotoba {
 
     /// The microphone off, and what it heard written down by the model.
     fn finish_dictation(&mut self, rec: dictate::Recorder, cx: &mut Context<Self>) {
-        crate::sys::take_escape(false);
-        crate::sys::play_sound(DICTATE_STOP);
+        let _ = crate::sys::play_sound(DICTATE_STOP);
         self.write_down(move || rec.finish(), cx);
     }
 
@@ -749,6 +774,7 @@ impl Kotoba {
     /// put where the person is.
     pub fn write_down(&mut self, heard: impl FnOnce() -> Vec<f32> + std::marker::Send + 'static, cx: &mut Context<Self>) {
         let Some(model) = dictate::chosen(&self.cfg.app.dictate_model) else {
+            crate::sys::take_escape(false);
             return;
         };
         let keep = self.cfg.app.dictate_keep.clone();
@@ -758,35 +784,44 @@ impl Kotoba {
         let terms = self.cfg.app.dictate_terms.clone();
         let avoided = self.cfg.app.dictate_avoid.clone();
         self.dictation = Dictation::Writing;
+        // Escape stops this too, in other apps as well.
+        crate::sys::take_escape(true);
+        let stop = dictate::Stop::default();
+        self.writing = Some(stop.clone());
         if let Some(pill) = self.pill {
             let _ = pill.update(cx, |pill, _, cx| pill.set_phase(crate::pill::Phase::Writing, cx));
         }
         cx.notify();
         cx.spawn(async move |this, cx| {
+            let running = stop.clone();
             let got = cx
                 .background_executor()
                 .spawn(async move {
+                    let stop = running;
                     let audio = heard();
+                    if stop.stopped() {
+                        return Ok(String::new());
+                    }
                     // The system hands silence, not an error, to an app
                     // the person has not let use the microphone.
                     if audio.iter().all(|s| *s == 0.0) {
                         return Err(NotWritten::Silence);
                     }
-                    let heard = dictate::spell(&dictate::transcribe(model, &audio, &terms).map_err(NotWritten::Failed)?, &terms);
+                    let heard = dictate::spell(&dictate::transcribe(model, &audio, &terms, &stop).map_err(NotWritten::Failed)?, &terms);
                     // The words never to be written left out, before the
                     // clean-up sees them and again after it.
                     let kept = dictate::avoid(&heard, &avoided);
                     // Cleaned up when that is on; as it was heard when the
                     // model fails or does not keep to what was said.
                     let mut words = kept.clone();
-                    if let Some(cleaner) = cleaner.filter(|_| !kept.is_empty()) {
-                        match kotoba_core::clean::tidy(cleaner, &kept, &rules, &terms) {
+                    if let Some(cleaner) = cleaner.filter(|_| !kept.is_empty() && !stop.stopped()) {
+                        match kotoba_core::clean::tidy(cleaner, &kept, &rules, &terms, &stop) {
                             Ok(Some(tidied)) => words = dictate::avoid(&tidied, &avoided),
                             Ok(None) => {}
                             Err(e) => eprintln!("kotoba: post-processing: {e}"),
                         }
                     }
-                    if !words.is_empty() {
+                    if !words.is_empty() && !stop.stopped() {
                         let raw = (words != heard).then(|| heard.clone());
                         let said = dictate::Said { at: chrono::Utc::now().timestamp(), words: words.clone(), secs: audio.len() as f32 / dictate::RATE as f32, model: model.key.to_string(), raw };
                         if let Err(e) = dictate::remember(&said, &keep) {
@@ -797,7 +832,14 @@ impl Kotoba {
                 })
                 .await;
             let _ = this.update(cx, |this, cx| {
+                // Stopped: nothing of this is shown, and dictation may
+                // already be listening again.
+                if stop.stopped() {
+                    return;
+                }
+                this.writing = None;
                 this.dictation = Dictation::Off;
+                crate::sys::take_escape(false);
                 match got {
                     Ok(words) if words.is_empty() => this.pill_say(t("Nothing heard"), cx),
                     Ok(words) => {
@@ -1335,6 +1377,7 @@ impl Kotoba {
     pub fn open_dictated(&mut self, cx: &mut Context<Self>) {
         self.dictated_serial += 1;
         self.dictated_gone = None;
+        self.said_tall.borrow_mut().clear();
         self.dictated = Some((Rc::new(dictate::history(&self.cfg.app.dictate_keep)), self.dictated_serial));
         cx.notify();
     }
@@ -1343,6 +1386,7 @@ impl Kotoba {
     /// it does not come in again.
     pub fn refresh_dictated(&mut self, cx: &mut Context<Self>) {
         if let Some((_, serial)) = self.dictated.take() {
+            self.said_tall.borrow_mut().clear();
             self.dictated = Some((Rc::new(dictate::history(&self.cfg.app.dictate_keep)), serial));
             cx.notify();
         }
@@ -1746,6 +1790,10 @@ impl Kotoba {
                 if let Some(m) = dictate::MODELS.iter().rev().find(|m| !dictate::installed(m)) {
                     self.download_model(m, cx);
                 }
+            }
+            // Escape, as a press of it does.
+            "escape" => {
+                self.cancel_dictation(cx);
             }
             "dictate:pretend" => {
                 self.mic_levels.clear();

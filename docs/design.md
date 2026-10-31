@@ -15,13 +15,13 @@ The standard every part of Kotoba a person sees is held to: the settings window,
 - **One way to draw each thing.** A setting is a row on a card (`line`, `group`); on or off is a switch; a choice among a few is `segmented`; a list of many drops down (`settings_pick_h`); a button is a pill with an icon (`widgets::small_pill`, `widgets::choice_pill`); a key is a cap. A new control is a new pattern for every page, or it is not made.
 - **Things line up.** Names start on one line, controls end on another, and the widest controls on a page start and end together. Every field, button and choice in a row is one height.
 - **Every language.** A label never depends on English being short: controls grow to their words, and a page that fits in English fits in French and German. Each language is written as its own Mac writes it, in its own punctuation and with the system's names for its settings.
-- **Both appearances, every state.** Light and dark are designed together, never one inverted: every color has a value in each. A change is looked at in both, and in every state it has: empty, full, refused, waiting, off, hover, pressed, mid-motion, the window at its smallest (700 by 460).
+- **Both appearances, every state.** Light and dark are designed together, never one inverted: every color has a value in each. A change is looked at in both, and in every state it has: empty, full, refused, waiting, off, hover, pressed, mid-motion, the window at its smallest (820 by 460).
 - **Readable.** Words read on their ground at 4.5 to 1 or better, a control's edge at 3 to 1. A key is drawn as a key, never as code.
 - **Look before saying it is done.** At all the change shows, hides or moves, in both appearances and in the window at its smallest (Checking).
 
 ## The window
 
-820 by 664. The rail at the left is 190 wide, its rows starting under the traffic lights, 30 tall each, an icon and a name, the chosen one on a plate; it stands on the muted shade at half in the light appearance and the sidebar's in the dark. A section with something waiting (a permission not given, a newer Kotoba) wears a dot in the accent on its rail row. The page has a margin of 36 at either side. The section's name stands in the window's top (52 tall), level with the traffic lights, 15 points semibold, as the Mac's own settings have it.
+820 by 600, as every product of the studio's. The rail at the left is 190 wide, its rows starting under the traffic lights, 30 tall each, an icon and a name, the chosen one on a plate; it stands on the muted shade at half in the light appearance and the sidebar's in the dark. A section with something waiting (a permission not given, a newer Kotoba) wears a dot in the accent on its rail row. The page has a margin of 36 at either side. The section's name stands in the window's top (52 tall), level with the traffic lights, 15 points semibold, as the Mac's own settings have it.
 
 ## Groups and rows
 
@@ -41,7 +41,7 @@ A row that paints its own ground (the model in use, washed with the accent) roun
 
 ## About
 
-The last section is a title card, set as a film's first one is: "Alkaline Software presents", the app's icon, its name in the name's face and the accent, 言葉 and the version in small gray words. Under it a sentence naming the studio's owners, each name a link, and pills to the source and the release's notes. Under the credits, the updates: a card of two rows, Updates (what a check found, and the one button that checks or installs) and Check automatically. No gradients.
+The last section is the studio's own, the same in every product: a card holding the title card, set as a film's first one is: "Alkaline Software presents" at 14 points, the app's icon, its name at 42 in the name's face and the accent with 言葉 beside it in a Mincho at 0.78 of its size, as a Japanese name has (`fonts::kanji`), and the version in small gray words. Under the card, pills to the source and the release's notes; Kotoba has no site, so no pill to one. Then the updates: a card of two rows, Updates (what a check found, and the one button that checks or installs) and Check automatically, with no line under it. The studio is the only name it gives. No gradients.
 
 ## The menu bar item's menu
 

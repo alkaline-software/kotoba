@@ -43,10 +43,13 @@ const MODEL_SLOT_W: Pixels = px(96.);
 /// (Terms and Avoid, the page's foot), and never shorter than the least.
 /// Filling the window was tried: the field outgrew what is typed in it.
 const PREFERENCES_H: Pixels = px(300.);
-const PREFERENCES_ROOM: Pixels = px(244.);
+const PREFERENCES_ROOM: Pixels = px(308.);
 const PREFERENCES_LEAST: Pixels = px(160.);
 /// The window's top, clear for the traffic lights and dragged by.
 const TOP_H: Pixels = px(52.);
+/// How far past the history's box its rows are drawn, each way, so a fast
+/// scroll shows none missing.
+const SAID_OVER: f32 = 600.;
 
 impl Render for Kotoba {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
@@ -145,8 +148,8 @@ impl Kotoba {
         let rows: Vec<AnyElement> = match section {
             "models" => self.models_rows(cx),
             "customize" => self.customize_rows(cx),
-            // General: dictation's key and history, how the app stands on
-            // this Mac, and what the system has to allow.
+            // General: dictation's key, how the app stands on this Mac, and
+            // what the system has to allow.
             "general" => {
                 let appearance_key = match app.appearance.as_str() {
                     "light" => "light",
@@ -212,9 +215,8 @@ impl Kotoba {
                     group(Some(t("Permissions")), None, vec![line(t("Microphone"), said(mic_line), permit(mic), &theme), line(t("Accessibility"), said(t("For the shortcut and paste.")), permit(ax), &theme)], &theme),
                 ]
             }
-            // Who makes Kotoba: the app, and a sentence naming the studio
-            // and its two owners, each name a link to where they are found;
-            // then the updates.
+            // About, as in every product of the studio's: the title card,
+            // the pills, then the updates.
             "about" => {
                 let current = update::current_version();
                 // Under the credits, the updates, as little as possible:
@@ -265,7 +267,7 @@ impl Kotoba {
                     )
                 }));
                 let auto_check = self.switch("update-auto", app.check_updates, Rc::new(|this, on, _, cx| this.set_check_updates(on, cx)), cx);
-                let updates = group(None, None, vec![line(t("Updates"), update_note.map(|n| n.into_any_element()), button, &theme), line(t("Check automatically"), said(t("Once a day. Nothing is installed without you.")), auto_check, &theme)], &theme);
+                let updates = group(None, None, vec![line(t("Updates"), update_note.map(|n| n.into_any_element()), button, &theme), line(t("Check automatically"), None, auto_check, &theme)], &theme);
                 let link = |id: &'static str, name: &'static str, url: &'static str| {
                     div()
                         .id(id)
@@ -278,7 +280,7 @@ impl Kotoba {
                         .child(name)
                 };
                 let prose = || h_flex().flex_wrap().justify_center().text_size(px(13.5)).line_height(px(22.)).text_color(theme.muted_foreground);
-                let go = |id: &'static str, icon: &'static str, label: &'static str, url: String| small_pill(id, icon, label, Press::Quiet, false, &theme).on_click(move |_, _, cx| cx.open_url(&url));
+                let go = |id: &'static str, icon: &'static str, label: &'static str, url: String| small_pill(id, icon, label, Press::Quiet, false, &theme).h(px(28.)).on_click(move |_, _, cx| cx.open_url(&url));
                 let accent = theme.primary;
                 let site = update::repo_page();
                 vec![
@@ -294,7 +296,7 @@ impl Kotoba {
                         .border_1()
                         .border_color(theme.border)
                         .bg(card_ground(&theme))
-                        .child(weave(t("{studio} presents"), vec![("studio", link("about-studio", "Alkaline Software", "https://github.com/alkaline-software").into_any_element())], prose().text_size(px(12.5))))
+                        .child(weave(t("{studio} presents"), vec![("studio", link("about-studio", "Alkaline Software", "https://github.com/alkaline-software").into_any_element())], prose().text_size(px(14.))))
                         .child(div().id("about-icon").mt(px(18.)).cursor_pointer().hover(|s| s.opacity(0.82)).on_click({
                             let site = site.clone();
                             move |_, _, cx| cx.open_url(&site)
@@ -303,33 +305,32 @@ impl Kotoba {
                             div()
                                 .id("about-name")
                                 .mt(px(6.))
+                                .flex()
+                                .items_center()
                                 .cursor_pointer()
                                 .hover(|s| s.opacity(0.82))
                                 .on_click({
                                     let site = site.clone();
                                     move |_, _, cx| cx.open_url(&site)
                                 })
-                                .text_size(px(42.))
                                 .line_height(px(48.))
                                 .text_color(accent)
-                                .when_some(crate::fonts::wordmark_family(cx), |d, f| d.font_family(f))
-                                .child("Kotoba"),
+                                .child(div().text_size(px(42.)).when_some(crate::fonts::wordmark_family(cx), |d, f| d.font_family(f)).child("Kotoba"))
+                                .child(crate::fonts::kanji(42., cx)),
                         )
-                        .child(div().mt(px(4.)).text_size(px(12.5)).text_color(theme.muted_foreground).child(tf("言葉 · Version {v}", &[("v", &current)])))
+                        .child(div().mt(px(4.)).text_size(px(12.5)).text_color(theme.muted_foreground).child(tf("Version {v}", &[("v", &current)])))
                         .into_any_element(),
-                    v_flex()
+                    h_flex()
                         .w_full()
-                        .items_center()
-                        .gap(px(16.))
-                        .pt(px(8.))
-                        .child(weave(
-                            t("A studio by {jp} and {pingfan}."),
-                            vec![("jp", link("about-jp", "Dr. John Paul Helveston", "https://www.jhelvy.com").into_any_element()), ("pingfan", link("about-pingfan", "Dr. Pingfan Hu", "https://pingfan.org").into_any_element())],
-                            prose(),
-                        ))
-                        .child(h_flex().gap(px(8.)).child(go("about-source", "icons/github.svg", "GitHub", site.clone())).child(go("about-notes", "icons/file-text.svg", t("Release Notes"), update::release_page(current))))
+                        .justify_center()
+                        .pt(px(4.))
+                        .gap(px(8.))
+                        .child(go("about-source", "icons/github.svg", "GitHub", site.clone()))
+                        .child(go("about-notes", "icons/file-text.svg", t("Release Notes"), update::release_page(current)))
                         .into_any_element(),
-                    updates,
+                    // More room over it than the page's gap, so the pills
+                    // close the credits and the card starts something else.
+                    div().w_full().pt(px(12.)).child(updates).into_any_element(),
                 ]
             }
             // Every section is one of `SECTIONS` (`show_settings`).
@@ -387,7 +388,7 @@ impl Kotoba {
                                     .track_scroll(&self.settings_scroll)
                                     .px(PAGE_X)
                                     .pt(px(2.))
-                                    .pb(px(20.))
+                                    .pb(px(16.))
                                     .child(page_in(
                                         match section {
                                             "models" => "page-models",
@@ -493,8 +494,7 @@ impl Kotoba {
     }
 
     /// General's first rows: the key, with More and Reset and what is
-    /// said of it under them, and how long the history keeps what was
-    /// written, with the way to it.
+    /// said of it under them.
     fn shortcut_rows(&mut self, cx: &mut Context<Self>) -> Vec<AnyElement> {
         let theme = cx.theme().clone();
         let dark = theme.mode.is_dark();
@@ -638,27 +638,28 @@ impl Kotoba {
                 div().w(CONTROL_W).child(self.settings_pick_h(PickFor::Mic, "mic", Some("icons/microphone.svg"), self.mic_label(), px(28.), cx)).into_any_element(),
                 theme_ref,
             ),
-            // How long what dictation writes is kept, and the way to it.
-            line(
-                t("History"),
-                Some(div().child(t("Kept on this Mac only.")).into_any_element()),
-                h_flex()
-                    .w(CONTROL_W)
-                    .items_center()
-                    .gap(px(8.))
-                    .child(div().w(FIELD_W).child(self.settings_pick_h(PickFor::DictateKeep, "dictate-keep", Some("icons/history.svg"), t(kotoba_core::dictate::keep(&app.dictate_keep).1).to_string(), px(28.), cx)))
-                    .child(
-                        // As wide as More and Reset above it, so the two
-                        // rows end level.
-                        small_pill("dictate-history", "icons/list-bullets.svg", t("Show History"), Press::Quiet, false, &theme).h(px(28.)).flex_1().justify_center().on_click(cx.listener(|this, _: &ClickEvent, window, cx| {
-                            swallow_click(window, cx);
-                            this.open_dictated(cx);
-                        })),
-                    )
-                    .into_any_element(),
-                theme_ref,
-            ),
         ]
+    }
+
+    /// How long what dictation writes is kept, and the way to it.
+    fn history_row(&mut self, cx: &mut Context<Self>) -> AnyElement {
+        let theme = cx.theme().clone();
+        let keep = t(kotoba_core::dictate::keep(&self.cfg.app.dictate_keep).1).to_string();
+        line(
+            t("History"),
+            Some(div().child(t("Kept on this Mac only.")).into_any_element()),
+            h_flex()
+                .w(CONTROL_W)
+                .items_center()
+                .gap(px(8.))
+                .child(div().w(FIELD_W).child(self.settings_pick_h(PickFor::DictateKeep, "dictate-keep", Some("icons/history.svg"), keep, px(28.), cx)))
+                .child(small_pill("dictate-history", "icons/list-bullets.svg", t("Show History"), Press::Quiet, false, &theme).h(px(28.)).flex_1().justify_center().on_click(cx.listener(|this, _: &ClickEvent, window, cx| {
+                    swallow_click(window, cx);
+                    this.open_dictated(cx);
+                })))
+                .into_any_element(),
+            &theme,
+        )
     }
 
     /// One lane of Models, a group: its name (post-processing's with its
@@ -736,16 +737,27 @@ impl Kotoba {
                     }))
                     .into_any_element()
             };
-            let remove = pill(format!("dictate-remove-{}", m.key), "icons/trash.svg", t("Remove"), Press::Danger).on_click(cx.listener(move |this, _, window, cx| {
+            let remove = pill(format!("dictate-remove-{}", m.key), "icons/trash.svg", t("Remove"), Press::Danger).on_click(cx.listener(move |_, _, window, cx| {
                 swallow_click(window, cx);
-                let gone = match lane {
-                    Lane::Speech => dictate::remove(m),
-                    Lane::Clean => kotoba_core::clean::remove(m),
-                };
-                if let Err(e) = gone {
-                    this.say_error(tf("Not removed: {e}.", &[("e", &e)]), cx);
-                }
-                cx.notify();
+                // Off the main thread: it waits for a model at work, and
+                // a model is a large file to delete.
+                cx.spawn(async move |this, cx| {
+                    let gone = cx
+                        .background_spawn(async move {
+                            match lane {
+                                Lane::Speech => dictate::remove(m),
+                                Lane::Clean => kotoba_core::clean::remove(m),
+                            }
+                        })
+                        .await;
+                    let _ = this.update(cx, |this, cx| {
+                        if let Err(e) = gone {
+                            this.say_error(tf("Not removed: {e}.", &[("e", &e)]), cx);
+                        }
+                        cx.notify();
+                    });
+                })
+                .detach();
             }));
             (Some(state), remove.into_any_element())
         } else {
@@ -818,14 +830,21 @@ impl Kotoba {
         };
         let sub = (said_n > 0).then(|| format!("{} · {kept}", count(said_n, "{n} dictation", "{n} dictations")));
         let mut body = v_flex().px(px(12.)).pt(px(6.)).pb(px(14.));
-        let mut day = String::new();
-        for (ix, said) in all.iter().enumerate() {
+        let (shown, above, below) = self.said_in_view(all.len(), &scroll);
+        let whole = shown.len() == all.len();
+        body = body.when(above > 0., |d| d.child(div().flex_shrink_0().h(px(above))));
+        // How many children each row is: a day's name counts with the row
+        // under it.
+        let mut parts: Vec<usize> = Vec::new();
+        let day_of = |said: &dictate::Said| chrono::DateTime::from_timestamp(said.at, 0).map(|t| said_day(t.with_timezone(&chrono::Local).date_naive())).unwrap_or_default();
+        let mut day = shown.start.checked_sub(1).map_or(String::new(), |ix| day_of(&all[ix]));
+        for ix in shown {
+            let said = &all[ix];
             let at = chrono::DateTime::from_timestamp(said.at, 0).map(|t| t.with_timezone(&chrono::Local));
-            let this_day = at.map(|t| said_day(t.date_naive())).unwrap_or_default();
-            if this_day != day {
-                body = body.child(div().flex_shrink_0().px(px(10.)).pt(px(if ix == 0 { 6. } else { 14. })).pb(px(4.)).text_size(px(11.5)).font_weight(FontWeight::MEDIUM).text_color(theme.muted_foreground).child(this_day.clone()));
-                day = this_day;
-            }
+            let this_day = day_of(said);
+            let new_day = this_day != day;
+            day = this_day.clone();
+            let head = new_day.then(|| div().flex_shrink_0().px(px(10.)).pt(px(if ix == 0 { 6. } else { 14. })).pb(px(4.)).text_size(px(11.5)).font_weight(FontWeight::MEDIUM).text_color(theme.muted_foreground).child(this_day.clone()));
             let secs = said.secs.round() as u64;
             let mut meta = vec![at.map(|t| t.format("%H:%M").to_string()).unwrap_or_default(), format!("{}:{:02}", secs / 60, secs % 60)];
             meta.extend(dictate::model(&said.model).map(|m| m.name.to_string()));
@@ -867,7 +886,8 @@ impl Kotoba {
                 copy(format!("said-{}-{ix}", said.at).into(), said.words.clone(), if heard.is_some() { t("Copy post-processed") } else { t("Copy") }, cx).into_any_element(),
             );
             let heard = heard.map(|raw| line(div().text_size(px(12.5)).line_height(px(18.)).whitespace_normal().text_color(theme.muted_foreground).child(raw.clone()).into_any_element(), copy(format!("said-raw-{}-{ix}", said.at).into(), raw, t("Copy as heard"), cx).into_any_element()));
-            body = body.child(
+            parts.push(1 + usize::from(head.is_some()));
+            body = body.children(head).child(
                 v_flex()
                     .id(("said", ix))
                     .group(group.clone())
@@ -884,6 +904,14 @@ impl Kotoba {
                     .child(div().text_size(px(11.5)).text_color(theme.muted_foreground.opacity(0.85)).child(meta.join(" · "))),
             );
         }
+        let body = body.when(below > 0., |d| d.child(div().flex_shrink_0().h(px(below))));
+        let tall = self.said_tall.clone();
+        let body = body.when(whole, |d| {
+            d.on_children_prepainted(move |drawn, _, _| {
+                let mut drawn = drawn.iter();
+                *tall.borrow_mut() = parts.iter().map(|n| drawn.by_ref().take(*n).map(|b| f32::from(b.size.height)).sum()).collect();
+            })
+        });
         // Nothing to show: a mark on a plate and a line, in the middle.
         let empty = (said_n == 0).then(|| {
             v_flex()
@@ -924,6 +952,23 @@ impl Kotoba {
             .child(Icon::default().path("icons/external-link.svg").with_size(px(12.)))
             .into_any_element();
         self.over_settings("history", serial, gone, t("Dictation History"), sub, Some(folder), body, wall, Rc::new(|this, _, cx| this.close_dictated(cx)), cx)
+    }
+
+    /// Which of the history's rows to draw, and how tall the rest stand
+    /// above and below them. A hover draws the window whole, and a long
+    /// history at every draw held each frame. The sheet is of one width,
+    /// so a row is always as tall: every row is drawn once, to learn its
+    /// height (`said_tall`), and after that only those near the box, the
+    /// rest one empty box each, so the list keeps its length and the
+    /// scroll its place.
+    fn said_in_view(&self, rows: usize, scroll: &ScrollHandle) -> (std::ops::Range<usize>, f32, f32) {
+        let tall = self.said_tall.borrow();
+        let view = f32::from(scroll.bounds().size.height);
+        if tall.len() != rows || view <= 0. {
+            return (0..rows, 0., 0.);
+        }
+        let from = -f32::from(scroll.offset().y) - SAID_OVER;
+        rows_between(&tall, from, from + view + 2. * SAID_OVER)
     }
 
     /// A sheet over the settings: smaller than the window both ways, so
@@ -1048,7 +1093,8 @@ impl Kotoba {
             line(title, Some(div().child(detail).into_any_element()), control, &theme)
         };
         let (terms, avoided) = (self.cfg.app.dictate_terms.len(), self.cfg.app.dictate_avoid.len());
-        let words = group(Some(t("Words")), None, vec![list_row(WordList::Terms, t("Terms"), t("Written exactly as you save them."), terms, cx), list_row(WordList::Avoid, t("Avoid"), t("Never written."), avoided, cx)], &theme);
+        let history = self.history_row(cx);
+        let words = group(Some(t("Words")), None, vec![list_row(WordList::Terms, t("Terms"), t("Written exactly as you save them."), terms, cx), list_row(WordList::Avoid, t("Avoid"), t("Never written."), avoided, cx), history], &theme);
         vec![preferences, words]
     }
 
@@ -1289,4 +1335,40 @@ fn weave(sentence: &str, mut things: Vec<(&str, AnyElement)>, row: Div) -> Div {
         row = row.child(rest.to_string());
     }
     row
+}
+
+/// The rows of heights `tall`, one under the other, that reach between
+/// `from` and `to`, and how tall those above and below them stand.
+fn rows_between(tall: &[f32], from: f32, to: f32) -> (std::ops::Range<usize>, f32, f32) {
+    let (mut first, mut last, mut above, mut y) = (tall.len(), 0, 0., 0.);
+    for (ix, h) in tall.iter().enumerate() {
+        if y + h > from && y < to {
+            if ix < first {
+                (first, above) = (ix, y);
+            }
+            last = ix + 1;
+        }
+        y += h;
+    }
+    if first >= last {
+        return (0..0, y, 0.);
+    }
+    (first..last, above, y - above - tall[first..last].iter().sum::<f32>())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::rows_between;
+
+    #[test]
+    fn rows_in_view_keep_the_lists_length() {
+        let tall = [10., 20., 30., 40., 50.];
+        // The middle: those reached, the rest standing in for themselves.
+        assert_eq!(rows_between(&tall, 25., 65.), (1..4, 10., 50.));
+        // All of it, from before the top, as a list that fits.
+        assert_eq!(rows_between(&tall, -600., 1000.), (0..5, 0., 0.));
+        // Past the end: nothing drawn, and the list as long as it was.
+        assert_eq!(rows_between(&tall, 500., 900.), (0..0, 150., 0.));
+        assert_eq!(rows_between(&[], 0., 100.), (0..0, 0., 0.));
+    }
 }

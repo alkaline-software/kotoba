@@ -126,23 +126,42 @@ pub fn end_other_kotobas() {
 pub const KEYBOARD_SETTINGS_URL: &str = "x-apple.systempreferences:com.apple.Keyboard-Settings.extension";
 
 /// A sound of the app's own (a WAV file's bytes) played once, quietly:
-/// dictation's start and stop. The last one played is held until the
-/// next, or the system would let it go before it had sounded.
-pub fn play_sound(wav: &'static [u8]) {
-    use objc2::AllocAnyThread as _;
-    use objc2_app_kit::NSSound;
-    use objc2_foundation::NSData;
-    thread_local! {
-        static PLAYING: std::cell::RefCell<Option<objc2::rc::Retained<NSSound>>> = const { std::cell::RefCell::new(None) };
-    }
-    let data = NSData::with_bytes(wav);
-    if let Some(sound) = NSSound::initWithData(NSSound::alloc(), &data) {
-        // At 0.5 the chimes stood out over what else was playing; 0.35 and
-        // 0.28 were still more than wanted.
-        sound.setVolume(0.2);
-        sound.play();
-        PLAYING.with(|p| *p.borrow_mut() = Some(sound));
-    }
+/// dictation's start and stop. On a thread of its own: `play` waits for
+/// the Mac's sound output to wake, near half a second once it has been
+/// quiet for a few seconds, and on the main thread that held the pill's
+/// first moments, which were over by its next frame. What comes back
+/// says when the sound has begun.
+pub fn play_sound(wav: &'static [u8]) -> futures::channel::oneshot::Receiver<()> {
+    use std::sync::{mpsc, OnceLock};
+    type Asked = (&'static [u8], futures::channel::oneshot::Sender<()>);
+    static CHIMES: OnceLock<mpsc::Sender<Asked>> = OnceLock::new();
+    let chimes = CHIMES.get_or_init(|| {
+        let (tx, rx) = mpsc::channel::<Asked>();
+        let _ = std::thread::Builder::new().name("kotoba-chimes".into()).spawn(move || {
+            use objc2::AllocAnyThread as _;
+            use objc2_app_kit::NSSound;
+            use objc2_foundation::NSData;
+            // Held until the next, or it stops as it starts.
+            let mut playing = None;
+            while let Ok((wav, began)) = rx.recv() {
+                objc2::rc::autoreleasepool(|_| {
+                    let data = NSData::with_bytes(wav);
+                    if let Some(sound) = NSSound::initWithData(NSSound::alloc(), &data) {
+                        // At 0.5 the chimes stood out over what else was
+                        // playing; 0.35 and 0.28 were still more than wanted.
+                        sound.setVolume(0.2);
+                        sound.play();
+                        playing = Some(sound);
+                    }
+                });
+                let _ = began.send(());
+            }
+        });
+        tx
+    });
+    let (began, begun) = futures::channel::oneshot::channel();
+    let _ = chimes.send((wav, began));
+    begun
 }
 
 /// A picture of the app's own window, written to `path` as a PNG, for
@@ -238,7 +257,7 @@ pub enum Outside {
     Other,
     /// Dictation's key, when it is a key and not a tap. Kept from the app.
     Key,
-    /// Escape while dictation listens. Kept from the app.
+    /// Escape while dictation listens or writes. Kept from the app.
     Escape,
 }
 
@@ -588,6 +607,8 @@ pub struct PillPlace {
     pub display: u32,
     pub width: f32,
     pub notch: Option<(f32, f32, f32)>,
+    /// How tall the menu bar stands on this screen; 0 while it is hidden.
+    pub bar: f32,
 }
 
 pub fn pill_place() -> Option<PillPlace> {
@@ -609,7 +630,11 @@ pub fn pill_place() -> Option<PillPlace> {
     let width = screen.frame().size.width as f32;
     let top = screen.safeAreaInsets().top as f32;
     let notch = (top > 0.).then(|| (screen.auxiliaryTopLeftArea().size.width as f32, screen.auxiliaryTopRightArea().size.width as f32, top));
-    Some(PillPlace { display: id, width, notch })
+    // What the menu bar leaves of the screen, not `NSStatusBar`'s
+    // thickness, which said 22 over a bar 30 tall.
+    let (frame, visible) = (screen.frame(), screen.visibleFrame());
+    let bar = ((frame.origin.y + frame.size.height) - (visible.origin.y + visible.size.height)) as f32;
+    Some(PillPlace { display: id, width, notch, bar })
 }
 
 /// The pill's window made to stay over every app and every space, never

@@ -12,9 +12,9 @@ Download `Kotoba-mac-arm64.dmg` (Apple silicon) or `Kotoba-mac-x64.dmg` (Intel) 
 
 1. Open Kotoba. Its leaf is in the menu bar: a click opens the settings, a right click shows its menu. The first time, it opens the settings on **General**: allow the microphone (to hear you) and Accessibility (for the shortcut in any app, and to paste there).
 2. In **Models**, download a speech model. Qwen3-ASR is best with speech that mixes languages; Whisper hears the most languages.
-3. Press the shortcut (⌘⇧D, or another key or a modifier tapped alone, such as Right ⌘, under More), speak, and press it again. Esc cancels while it listens.
+3. Press the shortcut (⌘⇧D, or another key or a modifier tapped alone, such as Right ⌘, under More), speak, and press it again. Esc cancels, while it listens or while it writes.
 
-Post-processing is in **Models**. **Customize** holds your Preferences for it, the Terms written exactly as you save them, and the words to Avoid. The history of what you said is in **General**.
+Post-processing is in **Models**. **Customize** holds your Preferences for it, the Terms written exactly as you save them, and the words to Avoid. The history of what you said is in **Customize** too.
 
 ## How it is built
 

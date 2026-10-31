@@ -160,8 +160,12 @@ fn main() {
             }
         });
         // ggml aborts the process at exit while a model holds the GPU's
-        // memory, so each is let go first.
-        cx.on_app_quit(|_| {
+        // memory, so each is let go first, what is being written given up
+        // on and waited for.
+        cx.on_app_quit(|cx| {
+            if let Some(k) = cx.try_global::<App_>().map(|a| a.0.clone()) {
+                k.update(cx, |k, _| k.stop_writing());
+            }
             kotoba_core::dictate::unload();
             kotoba_core::clean::unload();
             async {}

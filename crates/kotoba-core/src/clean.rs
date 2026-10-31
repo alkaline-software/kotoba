@@ -386,11 +386,11 @@ mod engine {
     use std::time::{Duration, Instant};
 
     use super::{accept, prompt};
-    use crate::dictate::{path_of, Model};
+    use crate::dictate::{path_of, Model, Stop};
 
     extern "C" {
         fn kotoba_llm_load(path: *const c_char, ctx_tokens: c_int) -> *mut c_void;
-        fn kotoba_llm_complete(h: *mut c_void, prompt: *const c_char, max_new: c_int, out: *mut c_char, out_cap: c_int) -> c_int;
+        fn kotoba_llm_complete(h: *mut c_void, prompt: *const c_char, fixed: c_int, max_new: c_int, out: *mut c_char, out_cap: c_int, stop: *const bool) -> c_int;
         fn kotoba_llm_free(h: *mut c_void);
     }
 
@@ -431,16 +431,16 @@ mod engine {
     /// second for a sentence on Apple silicon, longer the first time, as
     /// the model loads.
     /// The person's terms are spelled their way in what is taken.
-    pub fn tidy(m: &Model, words: &str, rules: &str, terms: &[String]) -> Result<Option<String>, String> {
+    pub fn tidy(m: &Model, words: &str, rules: &str, terms: &[String], stop: &Stop) -> Result<Option<String>, String> {
         if words.trim().is_empty() {
             return Ok(None);
         }
-        Ok(accept(words, &rewrite(m, words, rules, terms)?).map(|w| crate::dictate::spell(&w, terms)))
+        Ok(accept(words, &rewrite(m, words, rules, terms, stop)?).map(|w| crate::dictate::spell(&w, terms)))
     }
 
     /// What the model writes for the words, as it writes it, told the
     /// person's own instructions and terms too.
-    pub fn rewrite(m: &Model, words: &str, rules: &str, terms: &[String]) -> Result<String, String> {
+    pub fn rewrite(m: &Model, words: &str, rules: &str, terms: &[String], stop: &Stop) -> Result<String, String> {
         let mut g = LOADED.lock().unwrap();
         if g.as_ref().is_none_or(|(file, _, _)| file != m.file) {
             *g = None;
@@ -453,11 +453,16 @@ mod engine {
         }
         let (_, llm, at) = g.as_mut().expect("loaded above");
         *at = Instant::now();
-        let p = CString::new(prompt(words, rules, terms)).map_err(|e| e.to_string())?;
+        let p = prompt(words, rules, terms);
+        // All before the last turn stays the same from one dictation to
+        // the next, while the instructions and terms do. What was said
+        // cannot hold this mark (`prompt`).
+        let fixed = p.rfind("<|im_start|>user\n").unwrap_or(0) as c_int;
+        let p = CString::new(p).map_err(|e| e.to_string())?;
         // As long again as what was said, and room for a list's marks.
         let max_new = (words.len() as c_int / 2 + 64).min(CTX_TOKENS / 2);
         let mut out = vec![0u8; 64 * 1024];
-        let n = unsafe { kotoba_llm_complete(llm.0, p.as_ptr(), max_new, out.as_mut_ptr() as *mut c_char, out.len() as c_int) };
+        let n = unsafe { kotoba_llm_complete(llm.0, p.as_ptr(), fixed, max_new, out.as_mut_ptr() as *mut c_char, out.len() as c_int, stop.flag_ptr()) };
         if n < 0 {
             return Err(if n == -2 { "too long to clean up".into() } else { "the clean-up model failed".into() });
         }
