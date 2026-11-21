@@ -75,7 +75,7 @@ crates/kotoba-core/        everything without a window
 crates/kotoba-app/         the window
   src/main.rs                the app, its key bindings, the menu bar item's choices
   src/kotoba.rs              the app's one `Kotoba`: dictation, downloads, the key, permissions, updates
-  src/settings.rs            the settings window: General, Models, Control, Customize, About; the sheets
+  src/settings.rs            the settings window: General, Dictation, Control, Models, About; the sheets
   src/controls.rs            switches, choices that slide, lists that drop down, folds
   src/scroll.rs              a gesture stays in the scroller it began in; a scroll a click starts glides
   src/widgets.rs             the shared drawing: buttons, keys on caps, hover labels, the motion's lengths

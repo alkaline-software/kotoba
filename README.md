@@ -16,7 +16,7 @@ Download `Kotoba-mac-arm64.dmg` (Apple silicon) or `Kotoba-mac-x64.dmg` (Intel) 
 
 To control the Mac by voice, press the Control shortcut (⌥⌘K), say what you want in any language, and press it again: "open Safari", "new tab and go to apple.com", "全选然后复制". Allow Accessibility, and download a post-processing model as well as a speech model. What needs the screen read, such as replying to someone, goes to your own Claude Code or Codex if you choose one in **Control**. Only then does anything leave your Mac: what you say, and what the agent reads on the screen.
 
-Post-processing is in **Models**. **Customize** holds your Preferences for it, the Terms written exactly as you save them, and the words to Avoid. The history of what you said is in **Customize** too.
+Post-processing is in **Models**. **Dictation** holds your Preferences for it, the Terms written exactly as you save them, the words to Avoid, and the history of what you said.
 
 ## How it is built
 

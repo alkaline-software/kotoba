@@ -13,9 +13,9 @@ How to look at a state of the window from a script.
 ## Launches
 
 ```
-KOTOBA_HOME=<scratch> KOTOBA_SETTINGS=general ./target/debug/Kotoba        # open the settings on a section (general, models, customize, about)
+KOTOBA_HOME=<scratch> KOTOBA_SETTINGS=general ./target/debug/Kotoba        # open the settings on a section (general, dictation, control, models, about)
 KOTOBA_SHOT=<file.png> KOTOBA_SHOT_AFTER=4 ...                           # a picture of the window, then quit
-KOTOBA_GO="history;close;section:customize"                                 # steps, the first a second in, then five seconds apart
+KOTOBA_GO="history;close;section:control"                                   # steps, the first a second in, then five seconds apart
 ```
 
 The picture is taken from inside (`sys::shoot_window`): a process may capture its own window without Screen Recording access.

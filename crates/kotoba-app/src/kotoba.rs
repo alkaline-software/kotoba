@@ -33,9 +33,9 @@ const SETTINGS_MIN: Size<Pixels> = Size { width: SETTINGS_W, height: px(460.) };
 /// The settings' sections, in the rail's order: key, name, icon.
 pub const SECTIONS: &[(&str, &str, &str)] = &[
     ("general", "General", "icons/settings.svg"),
-    ("models", "Models", "icons/cpu.svg"),
+    ("dictation", "Dictation", "icons/microphone.svg"),
     ("control", "Control", "icons/device-desktop.svg"),
-    ("customize", "Customize", "icons/sparkles.svg"),
+    ("models", "Models", "icons/cpu.svg"),
     ("about", "About", "icons/info.svg"),
 ];
 
@@ -76,7 +76,7 @@ pub enum Dictation {
     Writing,
 }
 
-/// The person's two lists of words, in Customize: the terms written
+/// The person's two lists of words, in Dictation: the terms written
 /// their way, and the words never written.
 #[derive(Clone, Copy, PartialEq, Debug)]
 pub enum WordList {
@@ -1508,7 +1508,7 @@ impl Kotoba {
                 }
                 // Coming up under the key's row while the settings show it:
                 // the settings slide down to it as it opens.
-                if job.is_some() && this.key_use.flatten().is_none() && this.window.is_some() && matches!(this.section, "general" | "control") {
+                if job.is_some() && this.key_use.flatten().is_none() && this.window.is_some() && matches!(this.section, "dictation" | "control") {
                     let now = Instant::now();
                     this.settings_glide.set(Some((now, now)));
                 }

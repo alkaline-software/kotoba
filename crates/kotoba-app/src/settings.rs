@@ -40,10 +40,11 @@ const LANGUAGE_W: Pixels = px(136.);
 const MODEL_SLOT_W: Pixels = px(96.);
 /// The preferences' field: this tall, or in a short window what room
 /// is left above it (the window's top, the field's name) and below it
-/// (Terms and Avoid, the page's foot), and never shorter than the least.
+/// (dictation's card above, the words' row below, the page's foot), and
+/// never shorter than the least.
 /// Filling the window was tried: the field outgrew what is typed in it.
 const PREFERENCES_H: Pixels = px(300.);
-const PREFERENCES_ROOM: Pixels = px(308.);
+const PREFERENCES_ROOM: Pixels = px(366.);
 const PREFERENCES_LEAST: Pixels = px(160.);
 /// The window's top, clear for the traffic lights and dragged by.
 const TOP_H: Pixels = px(52.);
@@ -147,11 +148,11 @@ impl Kotoba {
 
         let section = self.section;
         let rows: Vec<AnyElement> = match section {
+            "dictation" => self.dictation_rows(cx),
             "models" => self.models_rows(cx),
-            "customize" => self.customize_rows(cx),
             "control" => self.control_rows(cx),
-            // General: dictation's key, how the app stands on this Mac, and
-            // what the system has to allow.
+            // General: how the app stands on this Mac, and what the system
+            // has to allow.
             "general" => {
                 let appearance_key = match app.appearance.as_str() {
                     "light" => "light",
@@ -202,7 +203,6 @@ impl Kotoba {
                 let permit = |el: AnyElement| div().w(PERMIT_W).child(el).into_any_element();
                 let mic_line = if self.mic == Mic::Refused { t("Turn it on in System Settings.") } else { t("To hear you.") };
                 vec![
-                    group(Some(t("Dictation")), None, self.shortcut_rows(cx), &theme),
                     group(
                         Some(t("App")),
                         None,
@@ -366,8 +366,9 @@ impl Kotoba {
                     // the Mac's own settings do. It fades in with the page.
                     .child(Self::drag_region(h_flex().h(TOP_H).flex_shrink_0().w_full().px(PAGE_X).items_center(), cx).child(page_in(
                         match section {
+                            "dictation" => "title-dictation",
+                            "control" => "title-control",
                             "models" => "title-models",
-                            "customize" => "title-customize",
                             "about" => "title-about",
                             _ => "title-general",
                         },
@@ -393,8 +394,9 @@ impl Kotoba {
                                     .pb(px(16.))
                                     .child(page_in(
                                         match section {
+                                            "dictation" => "page-dictation",
+                                            "control" => "page-control",
                                             "models" => "page-models",
-                                            "customize" => "page-customize",
                                             "about" => "page-about",
                                             _ => "page-general",
                                         },
@@ -495,11 +497,13 @@ impl Kotoba {
         rows
     }
 
-    /// General's first rows: dictation's key, and the microphone.
-    fn shortcut_rows(&mut self, cx: &mut Context<Self>) -> Vec<AnyElement> {
+    /// Dictation: one card of its key, the microphone, and how long the
+    /// history keeps what was written, with the way to it; then what the
+    /// person tells it (`told_rows`).
+    fn dictation_rows(&mut self, cx: &mut Context<Self>) -> Vec<AnyElement> {
         let theme = cx.theme().clone();
         let theme_ref = &theme;
-        vec![
+        let rows = vec![
             self.key_row(Trigger::Dictate, t("Starts and stops dictation."), cx),
             // The microphone it listens to: the system's input unless one
             // is chosen.
@@ -509,7 +513,11 @@ impl Kotoba {
                 div().w(CONTROL_W).child(self.settings_pick_h(PickFor::Mic, "mic", Some("icons/microphone.svg"), self.mic_label(), px(28.), cx)).into_any_element(),
                 theme_ref,
             ),
-        ]
+            self.history_row(cx),
+        ];
+        let mut all = vec![group(None, None, rows, &theme)];
+        all.extend(self.told_rows(cx));
+        all
     }
 
     /// A key's row, for dictation or for control: its field, More and
@@ -1084,22 +1092,22 @@ impl Kotoba {
             .into_any_element()
     }
 
-    /// Customize: what the person tells dictation. The preferences are a
-    /// field of one size, kept as typed, which scrolls inside itself once
-    /// they are longer than it. Terms and the words to avoid are a row
-    /// each under it, with how many there are and Edit, which opens the
-    /// list on a sheet.
-    fn customize_rows(&mut self, cx: &mut Context<Self>) -> Vec<AnyElement> {
+    /// What the person tells dictation, under its card. The preferences
+    /// are a field of one size, kept as typed, which scrolls inside itself
+    /// once they are longer than it. Under it one row holds both lists,
+    /// terms at the left and the words to avoid at the right, each its
+    /// name, how many it has on a badge (none while it is empty), and
+    /// Edit, which opens the list on a sheet.
+    fn told_rows(&mut self, cx: &mut Context<Self>) -> Vec<AnyElement> {
         let theme = cx.theme().clone();
         let Some(prompt) = self.clean_prompt.clone() else { return Vec::new() };
         let focus = prompt.read(cx).focus_handle(cx);
         // A wall over the field: a wheel on it scrolls the field, never the
         // page under it.
         let (wall, _) = self.kept_scroll("preferences-wall".into(), Inner::Wall);
-        let caption = if self.cfg.app.clean_on { t("Post-processing follows these over its own rules.") } else { t("For post-processing, which is off, in Models.") };
         let preferences = v_flex()
             .gap(px(6.))
-            .child(group_head(Some(div().child(t("Preferences")).into_any_element()), Some(div().text_size(px(11.5)).text_color(theme.muted_foreground).child(caption).into_any_element()), &theme))
+            .child(group_head(Some(div().child(t("Preferences")).into_any_element()), None, &theme))
             .child(
                 div()
                     .id("clean-prompt")
@@ -1118,19 +1126,27 @@ impl Kotoba {
                     .child(Textarea::new(&prompt).appearance(false).bordered(false).h(relative(1.))),
             )
             .into_any_element();
-        // Each list: how many words it has, and Edit, which opens it on a
-        // sheet.
-        let list_row = |list: WordList, title: &'static str, detail: &'static str, n: usize, cx: &mut Context<Self>| {
+        // Each list, half the row: its name with how many words it has,
+        // and Edit, which opens it on a sheet. The number alone: the
+        // group's name says what it counts.
+        let badge = theme.muted_foreground.opacity(0.12);
+        let half = |list: WordList, title: &'static str, n: usize, cx: &mut Context<Self>| {
             let edit = small_pill(SharedString::from(format!("{}-open", list.key())), "icons/pencil.svg", t("Edit"), Press::Quiet, false, &theme).h(px(28.)).min_w(DICTATE_PILL_W).justify_center().on_click(cx.listener(move |this, _: &ClickEvent, window, cx| {
                 swallow_click(window, cx);
                 this.open_words(list, window, cx);
             }));
-            let control = h_flex().gap(px(12.)).items_center().child(div().text_size(px(12.)).text_color(theme.muted_foreground).child(if n == 0 { t("None yet").to_string() } else { count(n, "{n} word", "{n} words") })).child(edit).into_any_element();
-            line(title, Some(div().child(detail).into_any_element()), control, &theme)
+            let name = h_flex()
+                .flex_1()
+                .min_w_0()
+                .gap(px(8.))
+                .items_center()
+                .child(div().min_w_0().truncate().text_size(px(13.)).child(title))
+                .when(n > 0, |d| d.child(div().flex_shrink_0().h(px(18.)).min_w(px(18.)).px(px(6.)).flex().items_center().justify_center().rounded_full().bg(badge).text_size(px(11.)).font_weight(FontWeight::MEDIUM).text_color(theme.muted_foreground).child(n.to_string())));
+            h_flex().flex_1().min_w_0().min_h(px(46.)).px(px(14.)).py(px(8.)).gap(px(12.)).items_center().child(name).child(edit)
         };
         let (terms, avoided) = (self.cfg.app.dictate_terms.len(), self.cfg.app.dictate_avoid.len());
-        let history = self.history_row(cx);
-        let words = group(Some(t("Words")), None, vec![list_row(WordList::Terms, t("Terms"), t("Written exactly as you save them."), terms, cx), list_row(WordList::Avoid, t("Avoid"), t("Never written."), avoided, cx), history], &theme);
+        let both = h_flex().items_stretch().child(half(WordList::Terms, t("Terms"), terms, cx)).child(half(WordList::Avoid, t("Avoid"), avoided, cx).border_l_1().border_color(theme.border)).into_any_element();
+        let words = group(Some(t("Words")), None, vec![both], &theme);
         vec![preferences, words]
     }
 

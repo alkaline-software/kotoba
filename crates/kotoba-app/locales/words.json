@@ -17,15 +17,6 @@
     "de": "Modelle",
     "es": "Modelos"
   },
-  "Customize": {
-    "zh-Hans": "自定义",
-    "zh-Hant": "自訂",
-    "ja": "カスタマイズ",
-    "ko": "사용자화",
-    "fr": "Personnaliser",
-    "de": "Anpassen",
-    "es": "Personalizar"
-  },
   "Updates": {
     "zh-Hans": "更新",
     "zh-Hant": "更新",
@@ -701,24 +692,6 @@
     "de": "Vorlieben",
     "es": "Preferencias"
   },
-  "Post-processing follows these over its own rules.": {
-    "zh-Hans": "后处理会优先遵循这些偏好。",
-    "zh-Hant": "後處理會優先遵循這些偏好。",
-    "ja": "後処理は自身の規則よりこれを優先します。",
-    "ko": "후처리는 자체 규칙보다 이것을 우선합니다.",
-    "fr": "Le post-traitement les suit avant ses propres règles.",
-    "de": "Die Nachbearbeitung folgt diesen vor ihren eigenen Regeln.",
-    "es": "El posprocesamiento las sigue antes que sus propias reglas."
-  },
-  "For post-processing, which is off, in Models.": {
-    "zh-Hans": "用于后处理，后处理已在“模型”中关闭。",
-    "zh-Hant": "用於後處理，後處理已在「模型」中關閉。",
-    "ja": "後処理用です。後処理は「モデル」でオフになっています。",
-    "ko": "후처리용이며, 후처리는 ‘모델’에서 꺼져 있습니다.",
-    "fr": "Pour le post-traitement, désactivé dans Modèles.",
-    "de": "Für die Nachbearbeitung, die unter Modelle aus ist.",
-    "es": "Para el posprocesamiento, desactivado en Modelos."
-  },
   "Type in your preferences here in plain language.": {
     "zh-Hans": "在这里用平常的话写下你的偏好。",
     "zh-Hant": "在這裡用平常的話寫下你的偏好。",
@@ -746,15 +719,6 @@
     "de": "Begriffe",
     "es": "Términos"
   },
-  "Written exactly as you save them.": {
-    "zh-Hans": "完全按保存的样子书写。",
-    "zh-Hant": "完全按儲存的樣子書寫。",
-    "ja": "保存したとおりに書きます。",
-    "ko": "저장한 그대로 씁니다.",
-    "fr": "Écrits tels que vous les enregistrez.",
-    "de": "Genau so geschrieben, wie du sie speicherst.",
-    "es": "Se escriben tal como los guardas."
-  },
   "Avoid": {
     "zh-Hans": "禁用词",
     "zh-Hant": "禁用詞",
@@ -764,15 +728,6 @@
     "de": "Vermeiden",
     "es": "Evitar"
   },
-  "Never written.": {
-    "zh-Hans": "永远不会写出。",
-    "zh-Hant": "永遠不會寫出。",
-    "ja": "決して書きません。",
-    "ko": "절대 쓰지 않습니다.",
-    "fr": "Jamais écrits.",
-    "de": "Nie geschrieben.",
-    "es": "Nunca se escriben."
-  },
   "Edit": {
     "zh-Hans": "编辑",
     "zh-Hant": "編輯",
@@ -781,33 +736,6 @@
     "fr": "Modifier",
     "de": "Bearbeiten",
     "es": "Editar"
-  },
-  "None yet": {
-    "zh-Hans": "暂无",
-    "zh-Hant": "暫無",
-    "ja": "まだありません",
-    "ko": "아직 없음",
-    "fr": "Aucun",
-    "de": "Noch keine",
-    "es": "Ninguna aún"
-  },
-  "{n} word": {
-    "zh-Hans": "{n} 个词",
-    "zh-Hant": "{n} 個詞",
-    "ja": "{n} 語",
-    "ko": "{n}개 단어",
-    "fr": "{n} mot",
-    "de": "{n} Wort",
-    "es": "{n} palabra"
-  },
-  "{n} words": {
-    "zh-Hans": "{n} 个词",
-    "zh-Hant": "{n} 個詞",
-    "ja": "{n} 語",
-    "ko": "{n}개 단어",
-    "fr": "{n} mots",
-    "de": "{n} Wörter",
-    "es": "{n} palabras"
   },
   "Accept multiple terms at once": {
     "zh-Hans": "可一次添加多个术语",
