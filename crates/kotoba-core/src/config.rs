@@ -29,6 +29,11 @@ pub struct AppConfig {
     /// empty for the one the system has for input.
     pub dictate_mic: String,
     pub dictate_mic_name: String,
+    /// The key that starts and stops control, as `dictate_key` is kept.
+    pub control_key: String,
+    /// Who takes over what needs the screen read: the person's own
+    /// `claude` or `codex`, or empty for no one, so nothing leaves the Mac.
+    pub control_agent: String,
     /// Whether what dictation writes is cleaned up by a model after
     /// (`clean`), and by which, by `clean::MODELS`' keys.
     pub clean_on: bool,
@@ -66,6 +71,8 @@ impl Default for AppConfig {
             dictate_keep: crate::dictate::DEFAULT_KEEP.into(),
             dictate_mic: String::new(),
             dictate_mic_name: String::new(),
+            control_key: "secondary-alt-k".into(),
+            control_agent: String::new(),
             clean_on: false,
             clean_model: crate::clean::DEFAULT_MODEL.into(),
             clean_prompt: String::new(),

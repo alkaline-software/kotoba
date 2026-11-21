@@ -1609,5 +1609,140 @@
     "fr": "Rien d’écrit",
     "de": "Nichts geschrieben",
     "es": "No se escribió nada"
+  },
+  "Control": {
+    "zh-Hans": "控制",
+    "zh-Hant": "控制",
+    "ja": "コントロール",
+    "ko": "제어",
+    "fr": "Contrôle",
+    "de": "Steuerung",
+    "es": "Control"
+  },
+  "Agent": {
+    "zh-Hans": "智能体",
+    "zh-Hant": "代理程式",
+    "ja": "エージェント",
+    "ko": "에이전트",
+    "fr": "Agent",
+    "de": "Agent",
+    "es": "Agente"
+  },
+  "None": {
+    "zh-Hans": "无",
+    "zh-Hant": "無",
+    "ja": "なし",
+    "ko": "없음",
+    "fr": "Aucun",
+    "de": "Keiner",
+    "es": "Ninguno"
+  },
+  "For what needs the screen read. Nothing leaves this Mac.": {
+    "zh-Hans": "用于需要读取屏幕的操作。内容不会离开这台 Mac。",
+    "zh-Hant": "用於需要讀取螢幕的操作。內容不會離開這台 Mac。",
+    "ja": "画面の読み取りが必要な操作に使います。何もこの Mac の外に出ません。",
+    "ko": "화면을 읽어야 하는 작업에 사용합니다. 아무것도 이 Mac 밖으로 나가지 않습니다.",
+    "fr": "Pour ce qui demande de lire l’écran. Rien ne quitte ce Mac.",
+    "de": "Für alles, wofür der Bildschirm gelesen werden muss. Nichts verlässt diesen Mac.",
+    "es": "Para lo que requiere leer la pantalla. Nada sale de este Mac."
+  },
+  "Reads the screen. What you say and what it reads go to that service.": {
+    "zh-Hans": "读取屏幕。你说的话和读到的内容会发送到该服务。",
+    "zh-Hant": "讀取螢幕。你說的話和讀到的內容會傳送到該服務。",
+    "ja": "画面を読み取ります。話した内容と読み取った内容はそのサービスに送られます。",
+    "ko": "화면을 읽습니다. 말한 내용과 읽은 내용은 해당 서비스로 전송됩니다.",
+    "fr": "Lit l’écran. Ce que vous dites et ce qu’il lit sont envoyés à ce service.",
+    "de": "Liest den Bildschirm. Was Sie sagen und was es liest, geht an diesen Dienst.",
+    "es": "Lee la pantalla. Lo que dices y lo que lee se envían a ese servicio."
+  },
+  "That agent is not on this Mac.": {
+    "zh-Hans": "这台 Mac 上没有该智能体。",
+    "zh-Hant": "這台 Mac 上沒有該代理程式。",
+    "ja": "この Mac にそのエージェントはありません。",
+    "ko": "이 Mac에 해당 에이전트가 없습니다.",
+    "fr": "Cet agent n’est pas sur ce Mac.",
+    "de": "Dieser Agent ist nicht auf diesem Mac.",
+    "es": "Ese agente no está en este Mac."
+  },
+  "Allow Accessibility, and Kotoba can do what you say.": {
+    "zh-Hans": "允许辅助功能后，Kotoba 才能照你说的做。",
+    "zh-Hant": "允許輔助使用後，Kotoba 才能照你說的做。",
+    "ja": "アクセシビリティを許可すると、Kotoba が話した通りに操作できます。",
+    "ko": "손쉬운 사용을 허용하면 Kotoba가 말한 대로 할 수 있습니다.",
+    "fr": "Autorisez l’accessibilité, et Kotoba fera ce que vous dites.",
+    "de": "Erlauben Sie die Bedienungshilfen, und Kotoba tut, was Sie sagen.",
+    "es": "Permite Accesibilidad y Kotoba hará lo que digas."
+  },
+  "Needs an agent": {
+    "zh-Hans": "需要智能体",
+    "zh-Hant": "需要代理程式",
+    "ja": "エージェントが必要",
+    "ko": "에이전트 필요",
+    "fr": "Agent requis",
+    "de": "Agent nötig",
+    "es": "Requiere un agente"
+  },
+  "Choose an agent for what needs the screen read.": {
+    "zh-Hans": "请为需要读取屏幕的操作选择一个智能体。",
+    "zh-Hant": "請為需要讀取螢幕的操作選擇一個代理程式。",
+    "ja": "画面の読み取りが必要な操作のエージェントを選んでください。",
+    "ko": "화면을 읽어야 하는 작업에 사용할 에이전트를 선택하세요.",
+    "fr": "Choisissez un agent pour ce qui demande de lire l’écran.",
+    "de": "Wählen Sie einen Agent für alles, wofür der Bildschirm gelesen werden muss.",
+    "es": "Elige un agente para lo que requiere leer la pantalla."
+  },
+  "Not done": {
+    "zh-Hans": "未完成",
+    "zh-Hant": "未完成",
+    "ja": "完了できません",
+    "ko": "완료하지 못함",
+    "fr": "Non effectué",
+    "de": "Nicht erledigt",
+    "es": "No realizado"
+  },
+  "Not understood": {
+    "zh-Hans": "没听懂",
+    "zh-Hant": "沒聽懂",
+    "ja": "わかりません",
+    "ko": "이해하지 못함",
+    "fr": "Pas compris",
+    "de": "Nicht verstanden",
+    "es": "No entendido"
+  },
+  "No app called {name}": {
+    "zh-Hans": "没有名为 {name} 的 App",
+    "zh-Hant": "沒有名為 {name} 的 App",
+    "ja": "{name} というアプリはありません",
+    "ko": "{name} 앱이 없습니다",
+    "fr": "Pas d’app {name}",
+    "de": "Keine App {name}",
+    "es": "No hay app {name}"
+  },
+  "No {name} here": {
+    "zh-Hans": "这里没有 {name}",
+    "zh-Hant": "這裡沒有 {name}",
+    "ja": "{name} はここにありません",
+    "ko": "여기에 {name} 없음",
+    "fr": "Pas de {name} ici",
+    "de": "Kein {name} hier",
+    "es": "No hay {name} aquí"
+  },
+  "Press Return yourself": {
+    "zh-Hans": "请自己按回车",
+    "zh-Hant": "請自己按 Return",
+    "ja": "Return は自分で押してください",
+    "ko": "Return는 직접 누르세요",
+    "fr": "Appuyez vous-même sur Retour",
+    "de": "Drücken Sie selbst Return",
+    "es": "Pulsa Retorno tú mismo"
+  },
+  "Control this Mac by voice.": {
+    "zh-Hans": "用语音操作这台 Mac。",
+    "zh-Hant": "用語音操作這台 Mac。",
+    "ja": "声でこの Mac を操作します。",
+    "ko": "음성으로 이 Mac을 조작합니다.",
+    "fr": "Contrôlez ce Mac à la voix.",
+    "de": "Diesen Mac per Stimme steuern.",
+    "es": "Controla este Mac con la voz."
   }
 }

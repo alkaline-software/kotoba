@@ -4,7 +4,8 @@ The standard every part of Kotoba a person sees is held to: the settings window,
 
 ## Rules
 
-- **Calm.** One accent, green (`look::GREEN`), for what is on, in use or the one thing a page is for. Nothing else competes with it: a page with many of the same action (seven Downloads) draws them quiet. A color that stands for something else (a model maker's mark) marks that thing and nothing else.
+- **Calm.** One accent, green (`look::GREEN`), for what is on, in use or the one thing a page is for. Nothing else competes with it: a page with many of the same action (seven Downloads) draws them quiet. A color that stands for something else (a model maker's mark) marks that thing and nothing else. The light around the screen, while the Mac is being told what to do, is the one place many colors meet, outside the window (`docs/control.md`).
+- **Faded means out of reach.** Only what does not answer a press is drawn faded. What is off but can still be used stays at full ink; off shows in its switch and in the accent going.
 - **Everything fits.** Every section shows all it has without scrolling. The page still scrolls, for what a fold opens or what is added later; a new row that would push a section past the window means the section is reworked, not left to scroll. Two sections that read as one are merged: the updates are under About.
 - **Nothing jumps.** What appears, goes, opens, closes, grows, moves, fills or turns does so over a moment, with the pattern its neighbors use (`docs/window.md`, Motion). A section's name fades with its page.
 - **No pause at the end of a motion.** It runs into its place and stops, with no crawl, hesitation or second step in its last frames. Every new animation has had one until it was looked for, so look for it.
@@ -46,6 +47,18 @@ The last section is the studio's own, the same in every product: a card holding 
 ## The menu bar item's menu
 
 The system's own menu, never one drawn by the app: the sections in the rail's order with the rail's icons, a line before About, and another before Quit Kotoba. Its icons are the window's Tabler icons as template images, so the system tints them.
+
+## The README's picture
+
+The README opens with one moving picture (`.github/readme.gif`): what Kotoba does, played as a person does it, drawn in the hand of the studio's sites and never recorded from the screen. A recording carries one machine's fonts and whatever was open, and goes stale with every change of the window; a drawing is made again in seconds. Kotoba has no picture yet. The first is drawn as below and put at the head of the README as `<p align="center"><img src=".github/readme.gif" alt="…" width="100%"></p>`, its alt saying in a sentence or two what plays.
+
+- **The hand.** Hairlines on warm paper (`#F3F1EA`), a window a sheet of `#F8F6F0` with an edge of `#8E8A80`, words in `#1F1E1D` and `#77746B`; each part a pale wash of its color (9%) with an edge of it, its name in its color; lines stand for words. Source Serif 4 for the name, the title and what a part is called, its italic for what something does, JetBrains Mono for a key or a short label, all from Google Fonts so every machine renders the same picture.
+- **The layout.** In a 1920 by 1008 box: the icon and the name (with its kanji, where it has one) at the top left, the system at the top right in the accent, and the title under them, one line of what Kotoba is for. The stage at the left; at the right a list of what plays, a row each with its keys on caps, lit in its color while it plays and a shade darker once it has.
+- **The story** is what Kotoba has now. Each move is what a person does (a click on what does it, a drag, a key), with the pointer the Mac draws, on the curves the window uses for it. For the loop the stage fades out where it ended and in as it began, so the story never runs backward.
+
+`scripts/readme/readme.html` is the drawing: a canvas page that plays in a browser and draws any moment on its own. It keeps a script of times and works every place out from it, and exposes `ready`, `FRAMES` and `frame(i)`, which returns frame i as a PNG; nothing else in the page is named `frame`, or the two call each other. `scripts/make-readme-gif.sh` renders it on a Mac with ffmpeg: `scripts/readme/render.swift` loads the page in a windowless WebKit view and writes every frame, the icon handed in as data (`README_ICON`: drawn from a file it taints the canvas, and no frame can be read back), and ffmpeg makes the GIF with one palette for the whole loop, at 30 frames a second, 12 to 15 seconds and about 3 MB at most. `scripts/make-readme-gif.sh <dir> <first> <last>` writes frames as PNGs to look at first: a sheet of every 45th frame, each move's middle, and the loop's last and first frames side by side. Two things fading in one place stand over each other in a smudge, so one goes before the other comes.
+
+A release that changes what the picture shows (a part, its place, its keys, how it is brought in) changes the drawing in the same pass, and the GIF is rendered again and committed with it.
 
 ## Checking
 

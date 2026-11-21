@@ -12,7 +12,7 @@ use gpui::*;
 use gpui_component::scroll::ScrollableElement as _;
 use gpui_component::{h_flex, v_flex, ActiveTheme as _, Icon, IconName, Sizable as _};
 
-use crate::kotoba::{Inner, KeyGroup, Kotoba, PickFor, PickMenu, PickRow};
+use crate::kotoba::{Inner, KeyGroup, Kotoba, PickFor, PickMenu, PickRow, Trigger};
 use crate::widgets::{dictate_key_signs, float_shadow, key_combo, swallow_click, FOLD_ANIM, MENU_IN, MENU_OUT};
 
 impl Kotoba {
@@ -332,7 +332,8 @@ impl Kotoba {
             return;
         }
         match what {
-            PickFor::DictateKey => self.set_dictate_key(key.to_string(), cx),
+            PickFor::DictateKey => self.set_key(Trigger::Dictate, key.to_string(), cx),
+            PickFor::ControlKey => self.set_key(Trigger::Control, key.to_string(), cx),
             PickFor::DictateKeep => self.set_dictate_keep(key, cx),
             PickFor::Mic => self.set_mic(key, cx),
             PickFor::Language => self.set_language(key, cx),
@@ -346,9 +347,9 @@ impl Kotoba {
             // The kinds of key, each opening its keys beside it
             // (`render_key_group`). What the Mac does with Fn, or with F1
             // to F12, is said under the key's row once it is chosen.
-            PickFor::DictateKey => {
+            PickFor::DictateKey | PickFor::ControlKey => {
                 let rows = KeyGroup::ALL.iter().map(|g| PickRow { key: g.key().to_string(), name: g.name().to_string(), rule: false }).collect();
-                (rows, self.cfg.app.dictate_key.clone())
+                (rows, if what == PickFor::ControlKey { self.cfg.app.control_key.clone() } else { self.cfg.app.dictate_key.clone() })
             }
             // The system's, then each language by its flag and letters.
             PickFor::Language => {
@@ -383,7 +384,7 @@ impl Kotoba {
         let theme = cx.theme().clone();
         let view = window.viewport_size();
         let up = menu.by.center().y > view.height * 0.5;
-        let keys = menu.what == PickFor::DictateKey;
+        let keys = matches!(menu.what, PickFor::DictateKey | PickFor::ControlKey);
         let right = menu.by.left() + px(240.) > view.width - px(8.);
         let gap = px(6.);
         let room = if up { menu.by.top() - gap - px(12.) } else { view.height - menu.by.bottom() - gap - px(12.) };
@@ -483,8 +484,8 @@ impl Kotoba {
         let place = move |d: Stateful<Div>, off: Pixels| if up { d.bottom(rest - off) } else { d.top(rest - off) };
         // On More's list, the open kind's keys beside it, and the kind
         // open before going out.
-        let open_group = if keys { self.key_group.and_then(|(g, n)| self.render_key_group(g, n, &menu.current, gone, window, cx)) } else { None };
-        let gone_group = if keys && !gone { self.key_group_gone.and_then(|(g, n, at)| (at.elapsed() < MENU_OUT).then(|| self.render_key_group(g, n, &menu.current, true, window, cx)).flatten()) } else { None };
+        let open_group = if keys { self.key_group.and_then(|(g, n)| self.render_key_group(what, g, n, &menu.current, gone, window, cx)) } else { None };
+        let gone_group = if keys && !gone { self.key_group_gone.and_then(|(g, n, at)| (at.elapsed() < MENU_OUT).then(|| self.render_key_group(what, g, n, &menu.current, true, window, cx)).flatten()) } else { None };
         if gone {
             let card = card.with_animation(ElementId::Name(format!("pick-out-{}", menu.serial).into()), Animation::new(MENU_OUT), move |d, t| place(d, px(0.)).opacity(1. - t));
             return div().absolute().inset_0().child(card).children(open_group).into_any_element();
@@ -499,7 +500,7 @@ impl Kotoba {
     /// does, from the row's side. The modifiers are listed on their caps;
     /// the F keys stand four to a row, as a keyboard groups them, with a
     /// line under F12, where a Mac's own keys end.
-    fn render_key_group(&self, group: KeyGroup, serial: u32, current: &str, gone: bool, window: &Window, cx: &mut Context<Self>) -> Option<AnyElement> {
+    fn render_key_group(&self, what: PickFor, group: KeyGroup, serial: u32, current: &str, gone: bool, window: &Window, cx: &mut Context<Self>) -> Option<AnyElement> {
         use kotoba_core::dictate;
         let row = *self.key_group_at.borrow().get(&group)?;
         let theme = cx.theme().clone();
@@ -535,7 +536,7 @@ impl Kotoba {
                             .cursor_pointer()
                             .when(active, |d| d.bg(chosen))
                             .hover(move |s| s.bg(lit))
-                            .when(!gone, |d| d.on_click(cx.listener(move |this, _: &ClickEvent, _, cx| this.pick_chosen(PickFor::DictateKey, &full, cx))))
+                            .when(!gone, |d| d.on_click(cx.listener(move |this, _: &ClickEvent, _, cx| this.pick_chosen(what, &full, cx))))
                             .child(key_combo(&crate::widgets::tap_signs(tap), theme.muted_foreground).text_size(px(13.)).font_weight(FontWeight::MEDIUM))
                             .when(active, |d| d.child(div().flex_1()).child(Icon::new(IconName::Check).with_size(px(12.)).text_color(theme.primary))),
                     );
@@ -564,7 +565,7 @@ impl Kotoba {
                             .font_weight(FontWeight::MEDIUM)
                             .when(active, |d| d.bg(chosen).text_color(theme.primary))
                             .hover(move |s| s.bg(lit))
-                            .when(!gone, |d| d.on_click(cx.listener(move |this, _: &ClickEvent, _, cx| this.pick_chosen(PickFor::DictateKey, &full, cx))))
+                            .when(!gone, |d| d.on_click(cx.listener(move |this, _: &ClickEvent, _, cx| this.pick_chosen(what, &full, cx))))
                             .child(format!("F{n}"))
                     })));
                 }

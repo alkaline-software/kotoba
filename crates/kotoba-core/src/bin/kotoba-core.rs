@@ -36,6 +36,27 @@ fn main() {
                 clean::unload();
             }
         }
+        "control" => {
+            // kotoba-core control <key> <words | file of lines> [app in front]:
+            // what was said turned into steps, as the app does: what the
+            // model wrote and what was read from it. Nothing is carried out.
+            use kotoba_core::{clean, control};
+            let m = clean::model(args.get(1).map(String::as_str).unwrap_or(clean::DEFAULT_MODEL)).expect("no such model");
+            let given = args.get(2).expect("control <key> <words | file> [app]");
+            let front = args.get(3).map(String::as_str).unwrap_or("Finder");
+            let lines: Vec<String> = match std::fs::read_to_string(given) {
+                Ok(text) => text.lines().filter(|l| !l.trim().is_empty()).map(str::to_string).collect(),
+                Err(_) => vec![given.clone()],
+            };
+            for words in lines {
+                let at = std::time::Instant::now();
+                match control::write(m, &words, front, &Default::default()) {
+                    Ok(wrote) => println!("SAID   {words}\nWROTE  {}\nSTEPS  {:?}\n       {:.2} s\n", wrote.trim().replace('\n', " | "), control::plan(&words, &wrote), at.elapsed().as_secs_f32()),
+                    Err(e) => println!("SAID   {words}\nFAILED {e}\n"),
+                }
+            }
+            clean::unload();
+        }
         "dictate" => {
             // kotoba-core dictate models | download [key] | file <wav> [key] | mics:
             // the dictation's models and post-processing's, one downloaded

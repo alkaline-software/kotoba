@@ -177,6 +177,12 @@ pub fn accept(said: &str, wrote: &str) -> Option<String> {
     Some(wrote.to_string())
 }
 
+/// Whether every number in what was written was said, in digits or words.
+pub(crate) fn numbers_said(said: &str, wrote: &str) -> bool {
+    let spoken = said_numbers(said);
+    digit_runs(wrote).iter().all(|n| spoken.contains(n))
+}
+
 /// What an English word says as a number: "six" 6, "forty" 40,
 /// "hundred" 100, "third" 3, "twentieth" 20.
 fn english_number(w: &str) -> Option<u64> {
@@ -377,6 +383,7 @@ fn strip_marker(line: &str) -> &str {
 }
 
 pub use engine::{release_idle, rewrite, tidy, unload};
+pub(crate) use engine::complete;
 
 
 
@@ -441,6 +448,15 @@ mod engine {
     /// What the model writes for the words, as it writes it, told the
     /// person's own instructions and terms too.
     pub fn rewrite(m: &Model, words: &str, rules: &str, terms: &[String], stop: &Stop) -> Result<String, String> {
+        // As long again as what was said, and room for a list's marks.
+        let max_new = (words.len() as c_int / 2 + 64).min(CTX_TOKENS / 2);
+        complete(m, prompt(words, rules, terms), max_new, stop)
+    }
+
+    /// What the model writes after a prompt in its chat form, up to
+    /// `max_new` tokens: the one model of the app, loaded if it is not, for
+    /// post-processing and for control alike.
+    pub(crate) fn complete(m: &Model, p: String, max_new: c_int, stop: &Stop) -> Result<String, String> {
         let mut g = LOADED.lock().unwrap();
         if g.as_ref().is_none_or(|(file, _, _)| file != m.file) {
             *g = None;
@@ -453,14 +469,11 @@ mod engine {
         }
         let (_, llm, at) = g.as_mut().expect("loaded above");
         *at = Instant::now();
-        let p = prompt(words, rules, terms);
         // All before the last turn stays the same from one dictation to
         // the next, while the instructions and terms do. What was said
         // cannot hold this mark (`prompt`).
         let fixed = p.rfind("<|im_start|>user\n").unwrap_or(0) as c_int;
         let p = CString::new(p).map_err(|e| e.to_string())?;
-        // As long again as what was said, and room for a list's marks.
-        let max_new = (words.len() as c_int / 2 + 64).min(CTX_TOKENS / 2);
         let mut out = vec![0u8; 64 * 1024];
         let n = unsafe { kotoba_llm_complete(llm.0, p.as_ptr(), fixed, max_new, out.as_mut_ptr() as *mut c_char, out.len() as c_int, stop.flag_ptr()) };
         if n < 0 {

@@ -304,3 +304,80 @@ fn settings_are_kept_under_app_and_edited_in_place() {
     std::fs::write(paths::config_file(), "{ not json").unwrap();
     assert!(!Config::load().app.clean_on, "a broken file is the defaults");
 }
+
+mod control {
+    use kotoba_core::control::{plan, Held, Press, Step, Way};
+
+    fn strokes(step: &Step) -> Vec<(Held, String, u8)> {
+        match step {
+            Step::Keys(all) => all.iter().map(|s| (s.held, s.key.clone(), s.times)).collect(),
+            other => panic!("not keys: {other:?}"),
+        }
+    }
+
+    #[test]
+    fn reads_every_kind_of_step() {
+        let steps = plan("open safari go to a site click send write hello", "open Safari\nweb https://apple.com\nkeys cmd-shift-t enter:2\ntype hello\nclick Send\ndouble\nscroll down 3\nask").unwrap();
+        assert_eq!(steps[0], Step::Open("Safari".into()));
+        assert_eq!(steps[1], Step::Web("https://apple.com".into()));
+        let keys = strokes(&steps[2]);
+        assert!(keys[0].0.cmd && keys[0].0.shift && keys[0].1 == "t");
+        assert_eq!((keys[1].1.as_str(), keys[1].2), ("enter", 2));
+        assert_eq!(steps[3], Step::Type("hello".into()));
+        assert_eq!(steps[4], Step::Click(Press::Click, Some("Send".into())));
+        assert_eq!(steps[5], Step::Click(Press::Double, None));
+        assert_eq!(steps[6], Step::Scroll(Way::Down, 3));
+        assert_eq!(steps[7], Step::Ask);
+    }
+
+    #[test]
+    fn the_minus_key_and_a_bare_stroke_are_read() {
+        assert_eq!(strokes(&plan("zoom out", "keys cmd--").unwrap()[0])[0].1, "-");
+        assert_eq!(strokes(&plan("next desktop", "ctrl-right").unwrap()[0])[0].1, "right");
+    }
+
+    #[test]
+    fn none_is_no_steps() {
+        assert_eq!(plan("what time is it", "none"), Some(vec![]));
+        assert_eq!(plan("", ""), Some(vec![]));
+    }
+
+    #[test]
+    fn a_line_that_is_no_step_refuses_the_plan() {
+        assert_eq!(plan("x", "open Safari\nrun rm -rf ~"), None);
+        assert_eq!(plan("x", "Sure! I will open Safari."), None);
+        assert_eq!(plan("x", "keys hyper-q"), None);
+        assert_eq!(plan("x", "scroll sideways"), None);
+    }
+
+    #[test]
+    fn only_web_pages_are_opened() {
+        for bad in ["web file:///etc/passwd", "web javascript:alert(1)", "web https://user@evil.com", "web ssh://apple.com"] {
+            assert_eq!(plan("x", bad), None, "{bad}");
+        }
+        assert_eq!(plan("go to apple", "web apple.com"), Some(vec![Step::Web("https://apple.com".into())]));
+    }
+
+    #[test]
+    fn what_cannot_be_taken_back_is_refused() {
+        assert_eq!(plan("empty the trash", "keys cmd-shift-delete"), None);
+        assert_eq!(plan("log out", "keys cmd-shift-q"), None);
+        assert_eq!(plan("log out", "keys cmd-shift-alt-q"), None);
+    }
+
+    #[test]
+    fn typing_keeps_to_what_was_said() {
+        assert_eq!(plan("write hello world", "type hello world"), Some(vec![Step::Type("hello world".into())]));
+        assert_eq!(plan("write the answer", "type The answer is 42"), None);
+        assert_eq!(plan("what is the capital of france", "type Paris is the capital of France, a city on the Seine"), None);
+        assert!(plan("write twenty six", "type 26").is_some());
+    }
+
+    #[test]
+    fn a_plan_is_bounded() {
+        let long = vec!["keys enter"; 13].join("\n");
+        assert_eq!(plan("x", &long), None);
+        assert_eq!(plan("x", "keys down:99"), None);
+        assert_eq!(plan("x", "scroll down 99"), None);
+    }
+}

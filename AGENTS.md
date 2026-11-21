@@ -4,6 +4,8 @@
 
 **Kotoba** (言葉, "words") is a macOS menu bar app for dictation anywhere: press a shortcut in any app, speak, and the words are pasted where the cursor is. A speech model on this Mac writes down what was said, and a small language model, when post-processing is on, tidies it up while keeping to what was said. Nothing said leaves the machine.
 
+It also controls the Mac by voice: another key, a sentence in any language, and the language model turns it into steps Kotoba carries out, with a light around the screen while it does. What needs the screen read goes to the person's own Claude Code or Codex, when they turn one on: the one place anything said leaves the machine (`docs/control.md`).
+
 It is Emaki's dictation moved into an app of its own (Emaki is at `../emaki`). Kotoba is an Alkaline Software product: Rust, GPUI (Zed's toolkit) with the vendored gpui-component, a core crate with no window and an app crate with the window. It stands on its own: it never reads `~/.emaki`, and the person downloads its models again.
 
 ## The standard
@@ -18,6 +20,8 @@ Kotoba's design is held to the level of Awwwards, the Webbys and the FWA: minima
 
 Each is here because breaking it lost data or brought back a fixed bug. The doc named after a rule has the full story.
 
+- **Control's model sees what was said, never the screen,** and every step, the model's or an agent's, passes `control::step`: no shell, no script, no address but a web page. Enter stays the person's in a terminal. (`docs/control.md`)
+- **An agent is off unless the person chooses one,** and Kotoba never touches its login: it runs the person's own install as published. (`docs/control.md`)
 - **Models are let go before the process exits** (`dictate::unload`, `clean::unload`, at quit in `main.rs` and in the CLI), or every quit ends in a crash. (`docs/dictation.md`)
 - **One ggml in the program.** libllama is compiled from `vendor/llama.cpp` against transcribe-cpp-sys's ggml headers. Never add a second copy; update the two together. (`docs/platform.md`)
 - **No model ships with the app.** The person downloads each, checked by SHA-256.
@@ -49,6 +53,7 @@ Each is here because breaking it lost data or brought back a fixed bug. The doc 
 | `settings.rs`, `controls.rs`, `scroll.rs`, `main.rs`, the window and permissions in `kotoba.rs`, the menu bar in `sys.rs` | `docs/window.md` |
 | `look.rs`, `fonts.rs`, `assets.rs`, `widgets.rs`, `assets/`, `themes/` | `docs/look.md` |
 | `vendor/`, `Cargo.toml`, `.github/workflows/`, scripts, `update.rs`, `config.rs`, `paths.rs` | `docs/platform.md` |
+| `kotoba-core/src/control.rs`; `act.rs`, `agent.rs`, `glow.rs`; control in `kotoba.rs` | `docs/control.md` |
 | Checking a change in the window from a script | `docs/probing.md` |
 | Cutting a release | `docs/release.md` |
 
@@ -61,19 +66,23 @@ Cargo.toml                 the workspace and the one version; the zed revision i
 crates/kotoba-core/        everything without a window
   src/dictate.rs             the speech models, downloads, the microphone, transcription, terms, taps, history
   src/clean.rs               post-processing: the small models, the prompt, `accept`
+  src/control.rs             what was said turned into steps: the prompt, `plan`, the steps a line may be
   src/config.rs paths.rs     ~/.kotoba/config.json and the folders under ~/.kotoba
   src/update.rs              the newest release, its installer, and putting it in place
-  src/bin/kotoba-core.rs     dictate models | download [key] | file <wav>; clean <key> <words|file>; update
+  src/bin/kotoba-core.rs     dictate models | download [key] | file <wav>; clean <key> <words|file>; control <key> <words|file> [app]; update
   native/llm.cpp build.rs    libllama on transcribe.cpp's ggml
   tests/core.rs
 crates/kotoba-app/         the window
   src/main.rs                the app, its key bindings, the menu bar item's choices
   src/kotoba.rs              the app's one `Kotoba`: dictation, downloads, the key, permissions, updates
-  src/settings.rs            the settings window: General, Models, Customize, About; the sheets
+  src/settings.rs            the settings window: General, Models, Control, Customize, About; the sheets
   src/controls.rs            switches, choices that slide, lists that drop down, folds
   src/scroll.rs              a gesture stays in the scroller it began in; a scroll a click starts glides
   src/widgets.rs             the shared drawing: buttons, keys on caps, hover labels, the motion's lengths
   src/pill.rs                the pill at the top of the screen
+  src/act.rs                 control's hands: apps, keys, the pointer, what the screen shows
+  src/agent.rs               the person's agent, run with Kotoba's tools alone
+  src/glow.rs                the light around the screen
   src/sys.rs                 the Mac's side: menu bar item, event tap, paste, sounds, permissions, screens
   src/i18n.rs                the window's words in the person's language
   src/look.rs                the appearance and the accent
@@ -83,7 +92,7 @@ crates/kotoba-app/         the window
   macos/                     the Info.plist additions, the entitlements, the microphone's question in each language
 vendor/gpui-component/     the vendored toolkit, with its UPSTREAM.md
 vendor/llama.cpp/          libllama's sources, with its UPSTREAM.md
-scripts/                   dev-app.sh, relaunch.sh, make-icon.sh, release-*.sh, dictate-sounds.py
+scripts/                   dev-app.sh, relaunch.sh, make-icon.sh, make-readme-gif.sh and readme/, release-*.sh, dictate-sounds.py
 docs/                      how each part works and its traps; release.md, how to cut a release; probing.md
 CHANGELOG.md               one section per release; the release job reads it
 ```

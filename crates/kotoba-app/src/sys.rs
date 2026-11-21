@@ -183,7 +183,7 @@ pub fn shoot_window(window: &gpui::Window, path: &std::path::Path) -> Result<(),
 }
 
 /// A picture of one of the app's own windows by its number (`shoot_window`).
-fn shoot_number(number: isize, path: &std::path::Path) -> Result<(), String> {
+pub fn shoot_number(number: isize, path: &std::path::Path) -> Result<(), String> {
     use std::ffi::{c_char, c_void, CString};
     use std::os::unix::ffi::OsStrExt;
 
@@ -257,6 +257,8 @@ pub enum Outside {
     Other,
     /// Dictation's key, when it is a key and not a tap. Kept from the app.
     Key,
+    /// Control's key, as dictation's. Kept from the app.
+    ControlKey,
     /// Escape while dictation listens or writes. Kept from the app.
     Escape,
 }
@@ -304,6 +306,7 @@ mod outside {
     const DISABLED_BY_USER: u32 = 0xFFFF_FFFF;
     const KEYCODE_FIELD: u32 = 9;
     const AUTOREPEAT_FIELD: u32 = 8;
+    const USER_DATA_FIELD: u32 = 42;
     const ESCAPE: i64 = 53;
     /// ⌘, ⇧, ⌃ and ⌥, of the Mac's flags.
     pub const MODS: u64 = 0x10_0000 | 0x2_0000 | 0x4_0000 | 0x8_0000;
@@ -312,6 +315,7 @@ mod outside {
     /// Dictation's key as the key's code and the modifiers with it; 0 for
     /// none (a tap, or nothing bound). The code is in the low 16 bits.
     pub static KEY: AtomicU64 = AtomicU64::new(0);
+    pub static CONTROL_KEY: AtomicU64 = AtomicU64::new(0);
     pub static ESCAPE_TAKEN: AtomicBool = AtomicBool::new(false);
 
     pub fn trusted() -> bool {
@@ -339,6 +343,10 @@ mod outside {
             }
             return event;
         }
+        // Control's own keys and clicks: an Escape it presses stops nothing.
+        if unsafe { CGEventGetIntegerValueField(event, USER_DATA_FIELD) } == super::POSTED {
+            return event;
+        }
         // The app's own keys are its local monitor's (`key_events`).
         if super::app_is_active() {
             return event;
@@ -354,11 +362,13 @@ mod outside {
                     let _ = tx.unbounded_send(super::Outside::Escape);
                     return std::ptr::null_mut();
                 }
-                if key != 0 && code as u64 == key & 0xFFFF && mods == key & MODS {
-                    if unsafe { CGEventGetIntegerValueField(event, AUTOREPEAT_FIELD) } == 0 {
-                        let _ = tx.unbounded_send(super::Outside::Key);
+                for (key, said) in [(key, super::Outside::Key), (CONTROL_KEY.load(Ordering::Relaxed), super::Outside::ControlKey)] {
+                    if key != 0 && code as u64 == key & 0xFFFF && mods == key & MODS {
+                        if unsafe { CGEventGetIntegerValueField(event, AUTOREPEAT_FIELD) } == 0 {
+                            let _ = tx.unbounded_send(said);
+                        }
+                        return std::ptr::null_mut();
                     }
-                    return std::ptr::null_mut();
                 }
                 super::Outside::Other
             }
@@ -420,6 +430,9 @@ mod outside {
     }
 }
 
+/// What marks an event as Kotoba's own (`act::post`).
+pub const POSTED: i64 = 0x6B6F_746F;
+
 /// Whether this app is the one in front.
 fn app_is_active() -> bool {
     use objc2_app_kit::NSRunningApplication;
@@ -470,7 +483,7 @@ pub fn outside_keys() -> Option<futures::channel::mpsc::UnboundedReceiver<Outsid
 /// Dictation's key as the tap matches it in other apps: a gpui binding
 /// ("cmd-shift-d"), or None for a tap of modifiers or a key that has no
 /// code here.
-pub fn set_outside_key(binding: Option<&gpui::Keystroke>) {
+pub fn set_outside_key(binding: Option<&gpui::Keystroke>, control: bool) {
     let code = binding.and_then(|k| key_code(&k.key).map(|c| (c, k)));
     let packed = code.map_or(0, |(c, k)| {
         let m = &k.modifiers;
@@ -489,7 +502,11 @@ pub fn set_outside_key(binding: Option<&gpui::Keystroke>) {
         }
         mods | c as u64
     });
-    outside::KEY.store(packed, std::sync::atomic::Ordering::Relaxed);
+    if control {
+        outside::CONTROL_KEY.store(packed, std::sync::atomic::Ordering::Relaxed);
+    } else {
+        outside::KEY.store(packed, std::sync::atomic::Ordering::Relaxed);
+    }
 }
 
 /// Escape in another app cancels dictation, and is kept from that app,
@@ -500,7 +517,7 @@ pub fn take_escape(on: bool) {
 
 /// The Mac's code for a key as gpui names it, on the US layout, as the
 /// system's own shortcuts are.
-fn key_code(key: &str) -> Option<u16> {
+pub fn key_code(key: &str) -> Option<u16> {
     const LETTERS: [u16; 26] = [0, 11, 8, 2, 14, 3, 5, 4, 34, 38, 40, 37, 46, 45, 31, 35, 12, 15, 1, 17, 32, 9, 13, 7, 16, 6];
     const DIGITS: [u16; 10] = [29, 18, 19, 20, 21, 23, 22, 26, 28, 25];
     const F: [u16; 20] = [122, 120, 99, 118, 96, 97, 98, 100, 101, 109, 103, 111, 105, 107, 113, 106, 64, 79, 80, 90];
@@ -520,6 +537,17 @@ fn key_code(key: &str) -> Option<u16> {
         "space" => 49,
         "enter" => 36,
         "tab" => 48,
+        "esc" => 53,
+        "delete" => 51,
+        "forwarddelete" => 117,
+        "up" => 126,
+        "down" => 125,
+        "left" => 123,
+        "right" => 124,
+        "home" => 115,
+        "end" => 119,
+        "pageup" => 116,
+        "pagedown" => 121,
         "-" => 27,
         "=" => 24,
         "[" => 33,
@@ -1166,3 +1194,13 @@ pub fn ask_mic() -> futures::channel::oneshot::Receiver<bool> {
 /// microphone: where a refusal is undone.
 pub const ACCESSIBILITY_SETTINGS_URL: &str = "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility";
 pub const MICROPHONE_SETTINGS_URL: &str = "x-apple.systempreferences:com.apple.preference.security?Privacy_Microphone";
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn every_key_a_step_can_name_has_a_code() {
+        for key in kotoba_core::control::KEYS {
+            assert!(super::key_code(key).is_some(), "{key}");
+        }
+    }
+}

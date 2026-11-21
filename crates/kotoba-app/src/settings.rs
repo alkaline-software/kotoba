@@ -16,7 +16,7 @@ use gpui_component::tooltip::ManagedTooltipExt as _;
 use gpui_component::{h_flex, v_flex, ActiveTheme as _, Icon, IconName, Sizable as _};
 use kotoba_core::{dictate, update};
 
-use crate::kotoba::{Dictate, Escape, Inner, Kotoba, Lane, PickFor, WordList, KEY_CONTEXT, SECTIONS};
+use crate::kotoba::{Dictate, Escape, Inner, Kotoba, Lane, PickFor, WordList, KEY_CONTEXT, SECTIONS, Control, Trigger};
 use crate::i18n::{count, t, tf};
 use crate::sys::{Login, Mic};
 use crate::widgets::{choice_pill, dictate_key_signs, float_shadow, key_combo, key_text, key_text_wrap, page_in, said_day, small_pill, swallow_click, tip, Press, FOLD_ANIM, MENU_IN, MENU_OUT};
@@ -93,6 +93,7 @@ impl Render for Kotoba {
                 }
             }))
             .on_action(cx.listener(|this, _: &Dictate, _, cx| this.toggle_dictation(cx)))
+            .on_action(cx.listener(|this, _: &Control, _, cx| this.toggle_control(cx)))
             // A raw wheel listener in the capture phase, registered at
             // paint (nothing is drawn): see `route_scroll`.
             .child({
@@ -148,6 +149,7 @@ impl Kotoba {
         let rows: Vec<AnyElement> = match section {
             "models" => self.models_rows(cx),
             "customize" => self.customize_rows(cx),
+            "control" => self.control_rows(cx),
             // General: dictation's key, how the app stands on this Mac, and
             // what the system has to allow.
             "general" => {
@@ -493,16 +495,40 @@ impl Kotoba {
         rows
     }
 
-    /// General's first rows: the key, with More and Reset and what is
-    /// said of it under them.
+    /// General's first rows: dictation's key, and the microphone.
     fn shortcut_rows(&mut self, cx: &mut Context<Self>) -> Vec<AnyElement> {
         let theme = cx.theme().clone();
+        let theme_ref = &theme;
+        vec![
+            self.key_row(Trigger::Dictate, t("Starts and stops dictation."), cx),
+            // The microphone it listens to: the system's input unless one
+            // is chosen.
+            line(
+                t("Input"),
+                None,
+                div().w(CONTROL_W).child(self.settings_pick_h(PickFor::Mic, "mic", Some("icons/microphone.svg"), self.mic_label(), px(28.), cx)).into_any_element(),
+                theme_ref,
+            ),
+        ]
+    }
+
+    /// A key's row, for dictation or for control: its field, More and
+    /// Reset at the row's right, and under the row, across the card, what
+    /// is said of the key.
+    fn key_row(&mut self, which: Trigger, under: &'static str, cx: &mut Context<Self>) -> AnyElement {
+        let theme = cx.theme().clone();
         let dark = theme.mode.is_dark();
-        let app = self.cfg.app.clone();
-        let recording = self.dictate_key_rec;
+        let control = which == Trigger::Control;
+        let current = if control { self.cfg.app.control_key.clone() } else { self.cfg.app.dictate_key.clone() };
+        let first = kotoba_core::config::AppConfig::default();
+        let at_first = current == if control { first.control_key } else { first.dictate_key };
+        let recording = self.dictate_key_rec && self.key_for == which;
+        let (field_id, more_id, reset_id, pick_for) = if control { ("control-key", "control-key-more", "control-key-reset", PickFor::ControlKey) } else { ("dictate-key", "dictate-key-more", "dictate-key-reset", PickFor::DictateKey) };
+        let focus = if control { self.control_key_focus.clone() } else { self.dictate_key_focus.clone() };
+        let kept = if control { &self.control_kept } else { &self.dictate_kept };
         let field = div()
-            .id("dictate-key")
-            .track_focus(&self.dictate_key_focus)
+            .id(field_id)
+            .track_focus(&focus)
             .w_full()
             .h(px(28.))
             .px(px(10.))
@@ -515,57 +541,58 @@ impl Kotoba {
             .border_color(if recording { theme.primary } else { gpui::transparent_black() })
             .cursor_pointer()
             .text_size(px(13.))
-            .on_click(cx.listener(|this, _, window, cx| {
+            .on_click(cx.listener(move |this, _, window, cx| {
                 this.dictate_key_rec = true;
+                this.key_for = which;
                 this.dictate_key_note = None;
-                window.focus(&this.dictate_key_focus, cx);
+                window.focus(if which == Trigger::Control { &this.control_key_focus } else { &this.dictate_key_focus }, cx);
                 cx.notify();
             }))
-            .child(if recording { div().text_color(theme.muted_foreground).child(t("Press the keys")).into_any_element() } else { key_combo(&dictate_key_signs(&app.dictate_key), theme.muted_foreground).into_any_element() })
+            .child(if recording { div().text_color(theme.muted_foreground).child(t("Press the keys")).into_any_element() } else { key_combo(&dictate_key_signs(&current), theme.muted_foreground).into_any_element() })
             .into_any_element();
         // Modifiers alone, which no key pressed in the field can be, and
         // the F keys, are chosen from the list that drops from More.
-        let more_open = self.pick.as_ref().is_some_and(|p| p.what == PickFor::DictateKey);
+        let more_open = self.pick.as_ref().is_some_and(|p| p.what == pick_for);
         let more = div()
             .relative()
             .flex_shrink_0()
             .child(
-                small_pill("dictate-key-more", "icons/chevron-down.svg", t("More"), Press::Quiet, false, &theme)
+                small_pill(more_id, "icons/chevron-down.svg", t("More"), Press::Quiet, false, &theme)
                     .h(px(28.))
                     .min_w(DICTATE_PILL_W)
                     .justify_center()
                     .when(more_open, |d| d.bg(theme.muted_foreground.opacity(0.16)))
                     .managed_tooltip(|window, cx| tip(t("Modifier keys and F keys"), window, cx))
-                    .on_click(cx.listener(|this, _: &ClickEvent, window, cx| {
+                    .on_click(cx.listener(move |this, _: &ClickEvent, window, cx| {
                         swallow_click(window, cx);
                         this.dictate_key_rec = false;
                         this.dictate_key_note = None;
-                        this.pick_toggle(PickFor::DictateKey, cx);
+                        this.pick_toggle(pick_for, cx);
                     })),
             )
-            .child(self.pick_mark(PickFor::DictateKey, cx));
+            .child(self.pick_mark(pick_for, cx));
         // Under the row: why a key was not taken, coming and going in
         // motion from what it last said.
-        let note = self.dictate_key_note.clone();
+        let note = self.dictate_key_note.clone().filter(|_| self.key_for == which);
         if let Some(n) = &note {
-            self.dictate_kept.borrow_mut().0 = n.clone();
+            kept.borrow_mut().0 = n.clone();
         }
-        let said = self.dictate_kept.borrow().0.clone();
-        let note = self.fold_under("dictate-key-note".into(), note.is_some(), h_flex().w_full().pb(px(10.)).justify_end().text_size(px(12.)).text_color(theme.muted_foreground).child(key_text(&said)).into_any_element(), cx);
+        let said = kept.borrow().0.clone();
+        let note = self.fold_under(format!("{field_id}-note"), note.is_some(), h_flex().w_full().pb(px(10.)).justify_end().text_size(px(12.)).text_color(theme.muted_foreground).child(key_text(&said)).into_any_element(), cx);
         // With Fn chosen and the Mac giving it a job of its own, a tap
         // would do both; with F1 to F12 and the Mac's keys doing what is
         // printed on them, the key would not reach Kotoba at all. How to
         // change it, in Keyboard settings. It goes once the window comes
         // back with that done.
-        let key_job = if crate::kotoba::key_has_use(&app.dictate_key) { self.key_use.flatten() } else { None };
+        let key_job = if crate::kotoba::key_has_use(&current) { self.key_use.flatten() } else { None };
         if let Some(job) = key_job {
-            let mut kept = self.dictate_kept.borrow_mut();
+            let mut kept = kept.borrow_mut();
             kept.1 = job;
-            kept.2 = dictate_key_signs(&app.dictate_key);
+            kept.2 = dictate_key_signs(&current);
         }
-        let job = self.dictate_kept.borrow().1;
+        let job = kept.borrow().1;
         let words = if job == "printed" {
-            let key = self.dictate_kept.borrow().2.clone();
+            let key = kept.borrow().2.clone();
             format!("{} {}", tf("On Apple keyboards, {key} does what is printed on it unless Fn 🌐 is held.", &[("key", &key)]), t("Or turn on “Use F1, F2, etc. keys as standard function keys” in Keyboard Shortcuts."))
         } else {
             let also = match job {
@@ -601,44 +628,46 @@ impl Kotoba {
                     .child(small_pill("dictate-fn-settings", "icons/external-link.svg", "Keyboard Settings", Press::Quiet, false, &theme).flex_shrink_0().on_click(|_, _, cx| cx.open_url(crate::sys::KEYBOARD_SETTINGS_URL))),
             )
             .into_any_element();
-        let guide = self.fold_under("dictate-fn-guide".into(), key_job.is_some(), div().pb(px(10.)).child(guide).into_any_element(), cx);
+        let guide = self.fold_under(format!("{field_id}-fn-guide"), key_job.is_some(), div().pb(px(10.)).child(guide).into_any_element(), cx);
         let theme_ref = &theme;
-        vec![
-            // The key's field, More and Reset at the row's right, and
-            // under the row, across the card, what is said of the key.
-            v_flex()
-                .child(line(
-                    t("Shortcut"),
-                    Some(div().child(t("Starts and stops dictation.")).into_any_element()),
-                    h_flex()
-                        .w(CONTROL_W)
-                        .items_center()
-                        .gap(px(8.))
-                        .child(div().flex_1().min_w_0().child(field))
-                        .child(more)
-                        .child(
-                            small_pill("dictate-key-reset", "icons/rotate.svg", t("Reset"), Press::Quiet, app.dictate_key == kotoba_core::config::AppConfig::default().dictate_key, &theme)
-                                .h(px(28.))
-                                .min_w(DICTATE_PILL_W)
-                                .justify_center()
-                                .flex_shrink_0()
-                                .on_click(cx.listener(|this, _, _, cx| this.reset_dictate_key(cx))),
-                        )
-                        .into_any_element(),
-                    theme_ref,
-                ))
-                .children(note.map(|n| div().px(px(14.)).child(n)))
-                .children(guide.map(|g| div().px(px(14.)).child(g)))
-                .into_any_element(),
-            // The microphone it listens to: the system's input unless one
-            // is chosen.
-            line(
-                t("Input"),
-                None,
-                div().w(CONTROL_W).child(self.settings_pick_h(PickFor::Mic, "mic", Some("icons/microphone.svg"), self.mic_label(), px(28.), cx)).into_any_element(),
+        v_flex()
+            .child(line(
+                t("Shortcut"),
+                Some(div().child(under).into_any_element()),
+                h_flex()
+                    .w(CONTROL_W)
+                    .items_center()
+                    .gap(px(8.))
+                    .child(div().flex_1().min_w_0().child(field))
+                    .child(more)
+                    .child(
+                        small_pill(reset_id, "icons/rotate.svg", t("Reset"), Press::Quiet, at_first, &theme)
+                            .h(px(28.))
+                            .min_w(DICTATE_PILL_W)
+                            .justify_center()
+                            .flex_shrink_0()
+                            .on_click(cx.listener(move |this, _, _, cx| this.reset_key(which, cx))),
+                    )
+                    .into_any_element(),
                 theme_ref,
-            ),
-        ]
+            ))
+            .children(note.map(|n| div().px(px(14.)).child(n)))
+            .children(guide.map(|g| div().px(px(14.)).child(g)))
+            .into_any_element()
+    }
+
+    /// Control: its key, and who takes what needs the screen read.
+    fn control_rows(&mut self, cx: &mut Context<Self>) -> Vec<AnyElement> {
+        let theme = cx.theme().clone();
+        let chosen = match self.cfg.app.control_agent.as_str() {
+            "claude" => "claude",
+            "codex" => "codex",
+            _ => "none",
+        };
+        let agents = div().w(CONTROL_W).child(self.segmented("agent", vec![("none", t("None").into()), ("claude", "Claude Code".into()), ("codex", "Codex".into())], chosen, Rc::new(|this, agent, _, cx| this.set_agent(if agent == "none" { "" } else { agent }, cx)), cx)).into_any_element();
+        let note = if chosen == "none" { t("For what needs the screen read. Nothing leaves this Mac.") } else { t("Reads the screen. What you say and what it reads go to that service.") };
+        let key = self.key_row(Trigger::Control, t("Control this Mac by voice."), cx);
+        vec![group(None, None, vec![key, line(t("Agent"), Some(div().child(note).into_any_element()), agents, &theme)], &theme)]
     }
 
     /// How long what dictation writes is kept, and the way to it.
@@ -673,23 +702,13 @@ impl Kotoba {
             Lane::Clean => t("Post-processing"),
         };
         let models = lane.models();
-        // Post-processing off: its name and its models fade to gray, over a
-        // moment; the switch stays as it is.
-        let live = lane == Lane::Speech || (self.cfg.app.clean_on && in_use.is_some());
-        let fade = self.presence(&format!("lane-live-{}", lane.key()), live, cx);
-        let dim = move |d: Div| -> AnyElement {
-            match fade {
-                Some((coming, n)) => d.with_animation(ElementId::Name(format!("lane-fade-{n}").into()), Animation::new(FOLD_ANIM).with_easing(ease_out_quint()), move |d, t| d.opacity(if coming { 0.5 + 0.5 * t } else { 1. - 0.5 * t })).into_any_element(),
-                None => d.opacity(if live { 1. } else { 0.5 }).into_any_element(),
-            }
-        };
         let switch = (lane == Lane::Clean).then(|| {
             let on = self.cfg.app.clean_on && in_use.is_some();
             self.switch("clean-on", on, Rc::new(|this, on, _, cx| this.set_clean_on(on, cx)), cx)
         });
         let last = models.len().saturating_sub(1);
         let rows: Vec<AnyElement> = models.iter().enumerate().map(|(i, m)| self.model_row(lane, m, in_use, (i == 0, i == last), cx)).collect();
-        v_flex().gap(px(6.)).child(group_head(Some(dim(div().child(title))), switch, &theme)).child(dim(card(rows, &theme))).into_any_element()
+        v_flex().gap(px(6.)).child(group_head(Some(div().child(title).into_any_element()), switch, &theme)).child(card(rows, &theme)).into_any_element()
     }
 
     /// One model on its row of the lane's card: its maker's mark, its
@@ -704,14 +723,16 @@ impl Kotoba {
         let well = theme.muted;
         let here = dictate::installed(m);
         let using = in_use.is_some_and(|u| u.key == m.key);
-        // A post-processing model chosen while it is off is not in use.
+        // A post-processing model chosen while it is off is not in use:
+        // the accent goes from its row. Nothing is faded: every button here
+        // works with the switch off.
         let resting = lane == Lane::Clean && !self.cfg.app.clean_on;
+        let turning = self.presence(&format!("lane-resting-{}", lane.key()), resting, cx);
         let coming = self.dictate_dl.iter().find(|(k, _, _)| *k == m.key).map(|(_, got, stop)| (got.load(std::sync::atomic::Ordering::Relaxed), std::sync::Arc::clone(stop)));
         let mark = if m.maker == "Qwen" { "icons/makers/qwen.svg" } else { "icons/makers/openai.svg" };
         let size = if m.bytes >= 1_000_000_000 { format!("{:.1} GB", m.bytes as f64 / 1e9) } else { format!("{} MB", m.bytes / 1_000_000) };
         let slot = |el: AnyElement| div().w(MODEL_SLOT_W).flex_shrink_0().flex().justify_center().child(el).into_any_element();
-        // Post-processing turned off is gray throughout: no accent, no red.
-        let pill = |id: String, icon: &'static str, word: &'static str, kind: Press| small_pill(SharedString::from(id), icon, word, if resting { Press::Quiet } else { kind }, false, &theme).h(px(28.)).w(MODEL_SLOT_W).px(px(8.)).justify_center();
+        let pill = |id: String, icon: &'static str, word: &'static str, kind: Press| small_pill(SharedString::from(id), icon, word, kind, false, &theme).h(px(28.)).w(MODEL_SLOT_W).px(px(8.)).justify_center();
         let (first, second): (Option<AnyElement>, AnyElement) = if let Some((got, stop)) = coming {
             let share = (got as f32 / m.bytes.max(1) as f32).clamp(0.0, 1.0);
             let bar = v_flex()
@@ -727,8 +748,16 @@ impl Kotoba {
             (Some(bar), stop.into_any_element())
         } else if here {
             let state = if using {
-                let ink = if resting { theme.muted_foreground } else { theme.primary };
-                h_flex().gap(px(5.)).items_center().text_size(px(12.)).text_color(ink).child(Icon::default().path("icons/check.svg").with_size(px(13.))).child(if resting { t("Chosen") } else { t("In use") }).into_any_element()
+                let said = |rest: bool| h_flex().gap(px(5.)).items_center().justify_center().text_size(px(12.)).text_color(if rest { theme.muted_foreground } else { theme.primary }).child(Icon::default().path("icons/check.svg").with_size(px(13.))).child(if rest { t("Chosen") } else { t("In use") });
+                // The switch turned: one word goes before the other comes,
+                // since at once the two would stand on each other.
+                match turning {
+                    Some((rest, n)) => {
+                        let fade = |word: Div, id: String, show: bool| word.absolute().inset_0().with_animation(ElementId::Name(id.into()), Animation::new(FOLD_ANIM).with_easing(ease_out_quint()), move |d, t| d.opacity(if show { (2. * t - 1.).max(0.) } else { (1. - 2. * t).max(0.) }));
+                        div().relative().w_full().h(px(28.)).child(fade(said(!rest), format!("model-word-out-{}-{n}", m.key), false)).child(fade(said(rest), format!("model-word-in-{}-{n}", m.key), true)).into_any_element()
+                    }
+                    None => said(resting).into_any_element(),
+                }
             } else {
                 pill(format!("dictate-use-{}", m.key), "icons/check.svg", t("Use"), Press::Quiet)
                     .on_click(cx.listener(move |this, _, window, cx| {
@@ -772,8 +801,15 @@ impl Kotoba {
         let hover = theme.muted_foreground.opacity(0.06);
         let lit = using && !resting;
         let inner_r = CARD_R - px(1.);
+        // The wash, under the row's contents, comes and goes over a moment.
+        let wash = div().absolute().inset_0().when(ends.0, |d| d.rounded_t(inner_r)).when(ends.1, |d| d.rounded_b(inner_r)).bg(theme.primary.opacity(0.07));
+        let wash = match self.presence(&format!("model-lit-{}", m.key), lit, cx) {
+            Some((coming, n)) => Some(wash.with_animation(ElementId::Name(format!("model-wash-{}-{n}", m.key).into()), Animation::new(FOLD_ANIM).with_easing(ease_out_quint()), move |d, t| d.opacity(if coming { t } else { 1. - t })).into_any_element()),
+            None => lit.then(|| wash.into_any_element()),
+        };
         h_flex()
             .id(SharedString::from(format!("dictate-row-{}", m.key)))
+            .relative()
             .w_full()
             .px(px(14.))
             .py(px(8.))
@@ -781,7 +817,7 @@ impl Kotoba {
             .items_center()
             .when(ends.0, |d| d.rounded_t(inner_r))
             .when(ends.1, |d| d.rounded_b(inner_r))
-            .when(lit, |d| d.bg(theme.primary.opacity(0.07)))
+            .children(wash)
             // A model that is here, and not the one in use, is taken up by
             // a click anywhere on its row.
             .when(here && !using, |d| {

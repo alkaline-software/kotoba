@@ -23,7 +23,7 @@ use kotoba_core::config::Config;
 use kotoba_core::{dictate, update};
 
 use crate::i18n::{t, tf};
-use crate::widgets::{binding_signs, MENU_OUT};
+use crate::widgets::{binding_signs, dictate_key_signs, MENU_OUT};
 
 /// The settings window's size, and the least it is dragged to.
 pub const SETTINGS_W: Pixels = px(820.);
@@ -34,6 +34,7 @@ const SETTINGS_MIN: Size<Pixels> = Size { width: SETTINGS_W, height: px(460.) };
 pub const SECTIONS: &[(&str, &str, &str)] = &[
     ("general", "General", "icons/settings.svg"),
     ("models", "Models", "icons/cpu.svg"),
+    ("control", "Control", "icons/device-desktop.svg"),
     ("customize", "Customize", "icons/sparkles.svg"),
     ("about", "About", "icons/info.svg"),
 ];
@@ -56,7 +57,14 @@ const IDLE_MODEL: Duration = Duration::from_secs(10 * 60);
 /// The key context of the settings window, where Escape is bound.
 pub const KEY_CONTEXT: &str = "Kotoba";
 
-actions!(kotoba, [Dictate, Escape, CloseWindow]);
+actions!(kotoba, [Dictate, Control, Escape, CloseWindow]);
+
+/// Which of the two keys a field, a list or a tap is for.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum Trigger {
+    Dictate,
+    Control,
+}
 
 /// Where dictation is: listening while the person speaks, then the model
 /// writing it down (`toggle_dictation`). Off a Mac it is never on.
@@ -115,6 +123,8 @@ pub enum PickFor {
     /// Dictation's key as a key pressed alone, chosen by its kind
     /// (`KeyGroup`): the More beside its field.
     DictateKey,
+    /// Control's key, the same way.
+    ControlKey,
     /// How long dictation's history keeps what it wrote.
     DictateKeep,
     /// The microphone dictation listens to.
@@ -249,6 +259,15 @@ pub struct Kotoba {
     pub mic_levels: VecDeque<f32>,
     pub pill: Option<WindowHandle<crate::pill::Pill>>,
     pub tap_watch: dictate::TapWatch,
+    /// Control's key, tapped alone, watched on its own.
+    pub control_tap_watch: dictate::TapWatch,
+    /// This listening is for control, not for dictation.
+    pub controlling: bool,
+    /// Which key's field is taking keys (`dictate_key_rec`).
+    pub key_for: Trigger,
+    pub control_key_focus: FocusHandle,
+    /// What the notes under control's key row last said.
+    pub control_kept: RefCell<(String, &'static str, String)>,
     /// Keys pressed in other apps are seen: Accessibility is given and
     /// the tap is on.
     pub outside_on: bool,
@@ -424,6 +443,11 @@ impl Kotoba {
             mic_levels: VecDeque::new(),
             pill: None,
             tap_watch: dictate::TapWatch::default(),
+            control_tap_watch: dictate::TapWatch::default(),
+            controlling: false,
+            key_for: Trigger::Dictate,
+            control_key_focus: cx.focus_handle(),
+            control_kept: RefCell::new((String::new(), "", String::new())),
             outside_on: false,
             ax_asked: false,
             mic: crate::sys::mic(),
@@ -552,18 +576,21 @@ impl Kotoba {
         self.term_input = Some(words_input(WordList::Terms, t("Accept multiple terms at once"), window, cx));
         self.avoid_input = Some(words_input(WordList::Avoid, t("Accept multiple words at once"), window, cx));
         // A click anywhere else leaves the key's field as it was.
-        cx.on_blur(&self.dictate_key_focus, window, |this, _, cx| {
-            if std::mem::take(&mut this.dictate_key_rec) {
-                this.dictate_key_note = None;
-                cx.notify();
-            }
-        })
-        .detach();
+        for (field, which) in [(self.dictate_key_focus.clone(), Trigger::Dictate), (self.control_key_focus.clone(), Trigger::Control)] {
+            cx.on_blur(&field, window, move |this, _, cx| {
+                if this.key_for == which && std::mem::take(&mut this.dictate_key_rec) {
+                    this.dictate_key_note = None;
+                    cx.notify();
+                }
+            })
+            .detach();
+        }
         cx.observe_window_activation(window, |this, window, cx| {
             this.window_active = window.is_window_active();
             // A key let go in another app is never seen here.
             if !this.window_active {
                 this.tap_watch.reset();
+                this.control_tap_watch.reset();
             }
             // Back from Keyboard settings, Fn's use may have changed; back
             // from Privacy & Security, a permission may have.
@@ -641,8 +668,44 @@ impl Kotoba {
     /// starting or the words are being written.
     pub fn toggle_dictation(&mut self, cx: &mut Context<Self>) {
         match std::mem::replace(&mut self.dictation, Dictation::Off) {
-            Dictation::Off => self.start_dictation(cx),
-            Dictation::Listening(rec) => self.finish_dictation(rec, cx),
+            Dictation::Off => {
+                self.controlling = false;
+                self.start_dictation(cx);
+            }
+            // The other key's listening is that key's to end.
+            Dictation::Listening(rec) if !self.controlling => self.finish_dictation(rec, cx),
+            other => self.dictation = other,
+        }
+    }
+
+    /// Control's key: start listening, with the light around the screen,
+    /// or stop and do what was said. It asks for both models, and for
+    /// Accessibility, without which nothing can be done.
+    pub fn toggle_control(&mut self, cx: &mut Context<Self>) {
+        match std::mem::replace(&mut self.dictation, Dictation::Off) {
+            Dictation::Off => {
+                if kotoba_core::clean::chosen(&self.cfg.app.clean_model).is_none() {
+                    self.say(t("Download a post-processing model first."), cx);
+                    self.show_settings(Some("models"), cx);
+                    return;
+                }
+                if !self.outside_on {
+                    self.say_error(t("Allow Accessibility, and Kotoba can do what you say."), cx);
+                    self.show_settings(Some("general"), cx);
+                    return;
+                }
+                self.controlling = true;
+                self.start_dictation(cx);
+                if !matches!(self.dictation, Dictation::Off) {
+                    crate::glow::show();
+                } else {
+                    self.controlling = false;
+                }
+            }
+            Dictation::Listening(rec) if self.controlling => {
+                let _ = crate::sys::play_sound(DICTATE_STOP);
+                self.carry_out(move || rec.finish(), cx);
+            }
             other => self.dictation = other,
         }
     }
@@ -667,6 +730,7 @@ impl Kotoba {
         {
             crate::sys::take_escape(false);
             self.pill_leave(cx);
+            self.control_over();
         }
         cx.notify();
         true
@@ -723,6 +787,7 @@ impl Kotoba {
                         Err(e) => {
                             this.dictation = Dictation::Off;
                             crate::sys::take_escape(false);
+                            this.control_over();
                             this.pill_say(t("No microphone"), cx);
                             this.say_error(tf("The microphone did not start: {e}.", &[("e", &e)]), cx);
                         }
@@ -749,6 +814,9 @@ impl Kotoba {
                     while this.mic_levels.len() > MIC_BARS {
                         this.mic_levels.pop_front();
                     }
+                    if this.controlling {
+                        crate::glow::level(level);
+                    }
                     if let Some(pill) = this.pill {
                         let levels = this.mic_levels.clone();
                         let _ = pill.update(cx, |pill, _, cx| pill.set_levels(&levels, cx));
@@ -759,6 +827,84 @@ impl Kotoba {
             if !on {
                 break;
             }
+        })
+        .detach();
+    }
+
+    /// Control's listening over, and the light with it.
+    fn control_over(&mut self) {
+        if std::mem::take(&mut self.controlling) {
+            crate::glow::hide();
+        }
+    }
+
+    /// What was heard (`heard`, off the main thread) written down, turned
+    /// into steps by the language model, and carried out. What needs the
+    /// screen read goes to the person's agent, when they turned one on. No
+    /// step here is kept in the history: it was not dictated.
+    pub fn carry_out(&mut self, heard: impl FnOnce() -> Vec<f32> + std::marker::Send + 'static, cx: &mut Context<Self>) {
+        let (Some(model), Some(planner)) = (dictate::chosen(&self.cfg.app.dictate_model), kotoba_core::clean::chosen(&self.cfg.app.clean_model)) else {
+            crate::sys::take_escape(false);
+            self.control_over();
+            return;
+        };
+        let terms = self.cfg.app.dictate_terms.clone();
+        let avoided = self.cfg.app.dictate_avoid.clone();
+        let agent = self.cfg.app.control_agent.clone();
+        self.control_job(move |stop| do_what_was_said(heard(), model, planner, &terms, &avoided, &agent, stop), cx);
+    }
+
+    /// Words taken as if heard (`say:` in a probe): the steps are real.
+    fn carry_words(&mut self, words: String, cx: &mut Context<Self>) {
+        let Some(planner) = kotoba_core::clean::chosen(&self.cfg.app.clean_model) else { return };
+        let agent = self.cfg.app.control_agent.clone();
+        self.control_job(move |stop| follow(&words, planner, &agent, stop), cx);
+    }
+
+    /// The work of one thing said, off the main thread, Escape stopping it,
+    /// and how it ended, in the pill.
+    fn control_job(&mut self, job: impl FnOnce(&dictate::Stop) -> Done + std::marker::Send + 'static, cx: &mut Context<Self>) {
+        self.dictation = Dictation::Writing;
+        crate::sys::take_escape(true);
+        crate::glow::thinking();
+        let stop = dictate::Stop::default();
+        self.writing = Some(stop.clone());
+        if let Some(pill) = self.pill {
+            let _ = pill.update(cx, |pill, _, cx| pill.set_phase(crate::pill::Phase::Writing, cx));
+        }
+        cx.notify();
+        cx.spawn(async move |this, cx| {
+            let running = stop.clone();
+            let done = cx.background_executor().spawn(async move { job(&running) }).await;
+            let _ = this.update(cx, |this, cx| {
+                if stop.stopped() {
+                    return;
+                }
+                this.writing = None;
+                this.dictation = Dictation::Off;
+                crate::sys::take_escape(false);
+                this.control_over();
+                match done {
+                    Done::Silence => {
+                        this.pill_say(t("No sound"), cx);
+                        this.say_error(t("No sound came in. Let Kotoba use the microphone."), cx);
+                        this.show_settings(Some("general"), cx);
+                    }
+                    Done::Done => this.pill_leave(cx),
+                    Done::Said(words) => this.pill_tell(words, cx),
+                    Done::Word(words) => this.pill_say(words, cx),
+                    Done::NeedsAgent => {
+                        this.pill_say(t("Needs an agent"), cx);
+                        this.say(t("Choose an agent for what needs the screen read."), cx);
+                        this.show_settings(Some("control"), cx);
+                    }
+                    Done::Failed(e) => {
+                        this.pill_say(t("Not done"), cx);
+                        this.say_error(format!("{e}."), cx);
+                    }
+                }
+                cx.notify();
+            });
         })
         .detach();
     }
@@ -925,6 +1071,19 @@ impl Kotoba {
         .detach();
     }
 
+    /// Words from elsewhere in the pill, cut to what it holds, then it goes.
+    fn pill_tell(&mut self, words: String, cx: &mut Context<Self>) {
+        let Some(pill) = self.pill.take() else { return };
+        let cut: String = words.lines().next().unwrap_or("").chars().take(28).collect();
+        let cut = if cut.chars().count() < words.chars().count() { format!("{cut}…") } else { cut };
+        let _ = pill.update(cx, |pill, _, cx| pill.set_phase(crate::pill::Phase::Said(cut.into()), cx));
+        cx.spawn(async move |_, cx| {
+            cx.background_executor().timer(Duration::from_millis(3000)).await;
+            let _ = pill.update(cx, |pill, window, cx| pill.leave(window, cx));
+        })
+        .detach();
+    }
+
     /// Whether Accessibility is given, read again, and the tap over other
     /// apps made to match: on when it is given (switched back on, or made
     /// anew), and the settings saying it is not when it was taken away.
@@ -1014,7 +1173,8 @@ impl Kotoba {
             Outside::Flags(flags) => self.key_event(Some(flags), cx),
             Outside::Other => self.key_event(None, cx),
             Outside::Key if !self.dictate_key_rec => self.toggle_dictation(cx),
-            Outside::Key => {}
+            Outside::ControlKey if !self.dictate_key_rec => self.toggle_control(cx),
+            Outside::Key | Outside::ControlKey => {}
             Outside::Escape => {
                 self.cancel_dictation(cx);
             }
@@ -1024,14 +1184,10 @@ impl Kotoba {
     /// Dictation's key, when it is a key, for the tap over other apps to
     /// match.
     fn send_outside_key(&self) {
-        {
-            let key = &self.cfg.app.dictate_key;
-            let stroke = if dictate::tap(key).is_some() {
-                None
-            } else {
-                gpui::Keystroke::parse(key).ok().or_else(|| gpui::Keystroke::parse(&kotoba_core::config::AppConfig::default().dictate_key).ok())
-            };
-            crate::sys::set_outside_key(stroke.as_ref());
+        let first = kotoba_core::config::AppConfig::default();
+        for (key, default, control) in [(&self.cfg.app.dictate_key, &first.dictate_key, false), (&self.cfg.app.control_key, &first.control_key, true)] {
+            let stroke = if dictate::tap(key).is_some() { None } else { gpui::Keystroke::parse(key).ok().or_else(|| gpui::Keystroke::parse(default).ok()) };
+            crate::sys::set_outside_key(stroke.as_ref(), control);
         }
     }
 
@@ -1043,17 +1199,29 @@ impl Kotoba {
         if std::env::var_os("KOTOBA_TAP_DEBUG").is_some() {
             eprintln!("kotoba: key event {:?} held {:?} watch {:?}", said.map(|f| format!("{f:#x}")), said.map(dictate::held_from_mac), self.tap_watch);
         }
-        let Some(tap) = dictate::tap(&self.cfg.app.dictate_key) else { return };
         if self.dictate_key_rec {
+            self.control_tap_watch.reset();
             return self.tap_watch.reset();
         }
-        match said {
-            Some(flags) => {
-                if self.tap_watch.flags(dictate::held_from_mac(flags), tap) {
-                    self.toggle_dictation(cx);
+        if let Some(tap) = dictate::tap(&self.cfg.app.dictate_key) {
+            match said {
+                Some(flags) => {
+                    if self.tap_watch.flags(dictate::held_from_mac(flags), tap) {
+                        self.toggle_dictation(cx);
+                    }
                 }
+                None => self.tap_watch.other(),
             }
-            None => self.tap_watch.other(),
+        }
+        if let Some(tap) = dictate::tap(&self.cfg.app.control_key) {
+            match said {
+                Some(flags) => {
+                    if self.control_tap_watch.flags(dictate::held_from_mac(flags), tap) {
+                        self.toggle_control(cx);
+                    }
+                }
+                None => self.control_tap_watch.other(),
+            }
         }
     }
 
@@ -1228,12 +1396,72 @@ impl Kotoba {
             cx.notify();
             return;
         }
-        self.set_dictate_key(binding, cx);
+        self.set_key(self.key_for, binding, cx);
     }
 
-    /// The dictation key back to its first one.
-    pub fn reset_dictate_key(&mut self, cx: &mut Context<Self>) {
-        self.set_dictate_key(kotoba_core::config::AppConfig::default().dictate_key, cx);
+    /// A key back to its first one.
+    pub fn reset_key(&mut self, which: Trigger, cx: &mut Context<Self>) {
+        let first = kotoba_core::config::AppConfig::default();
+        self.set_key(which, if which == Trigger::Control { first.control_key } else { first.dictate_key }, cx);
+    }
+
+    /// The key for dictation or for control: never the other's.
+    pub fn set_key(&mut self, which: Trigger, key: String, cx: &mut Context<Self>) {
+        let other = if which == Trigger::Control { &self.cfg.app.dictate_key } else { &self.cfg.app.control_key };
+        if *other == key {
+            self.key_for = which;
+            self.dictate_key_note = Some(tf("{key} is taken.", &[("key", &dictate_key_signs(&key))]));
+            cx.notify();
+            return;
+        }
+        match which {
+            Trigger::Dictate => self.set_dictate_key(key, cx),
+            Trigger::Control => self.set_control_key(key, cx),
+        }
+    }
+
+    /// Control on `key` from now, as `set_dictate_key`.
+    fn set_control_key(&mut self, key: String, cx: &mut Context<Self>) {
+        self.dictate_key_rec = false;
+        self.dictate_key_note = None;
+        self.control_tap_watch.reset();
+        if self.cfg.app.control_key != key {
+            self.key_use = None;
+            let old = std::mem::replace(&mut self.cfg.app.control_key, key.clone());
+            crate::move_control_key(&old, &key, cx);
+            if let Err(e) = Config::edit(move |c| c.app.control_key = key) {
+                self.say_error(tf("Could not save settings: {e}.", &[("e", &e)]), cx);
+            }
+            self.send_outside_key();
+        }
+        self.read_key_use(cx);
+        cx.notify();
+    }
+
+    /// The agent for what needs the screen read, once the program is seen
+    /// to be on this Mac. Looked for off the main thread: it may ask a shell.
+    pub fn set_agent(&mut self, agent: &'static str, cx: &mut Context<Self>) {
+        let keep = move |this: &mut Self, cx: &mut Context<Self>| {
+            this.cfg.app.control_agent = agent.to_string();
+            if let Err(e) = Config::edit(move |c| c.app.control_agent = agent.to_string()) {
+                this.say_error(tf("Could not save settings: {e}.", &[("e", &e)]), cx);
+            }
+            cx.notify();
+        };
+        if agent.is_empty() {
+            return keep(self, cx);
+        }
+        cx.spawn(async move |this, cx| {
+            let found = cx.background_spawn(async move { crate::agent::find(agent).is_some() }).await;
+            let _ = this.update(cx, |this, cx| {
+                if found {
+                    keep(this, cx);
+                } else {
+                    this.say_error(t("That agent is not on this Mac."), cx);
+                }
+            });
+        })
+        .detach();
     }
 
     /// Dictation on `key` from now: a binding, or modifiers tapped alone
@@ -1261,10 +1489,7 @@ impl Kotoba {
     /// again each time the window comes back, so it goes once the person
     /// has changed it in Keyboard settings.
     pub fn read_key_use(&mut self, cx: &mut Context<Self>) {
-        let key = self.cfg.app.dictate_key.clone();
-        if !key_has_use(&key) {
-            return;
-        }
+        let Some(key) = [&self.cfg.app.dictate_key, &self.cfg.app.control_key].into_iter().find(|k| key_has_use(k)).cloned() else { return };
         self.key_reads += 1;
         let n = self.key_reads;
         cx.spawn(async move |this, cx| {
@@ -1283,7 +1508,7 @@ impl Kotoba {
                 }
                 // Coming up under the key's row while the settings show it:
                 // the settings slide down to it as it opens.
-                if job.is_some() && this.key_use.flatten().is_none() && this.window.is_some() && this.section == "general" {
+                if job.is_some() && this.key_use.flatten().is_none() && this.window.is_some() && matches!(this.section, "general" | "control") {
                     let now = Instant::now();
                     this.settings_glide.set(Some((now, now)));
                 }
@@ -1768,6 +1993,41 @@ impl Kotoba {
             }
             "avoid" => self.open_words(WordList::Avoid, window, cx),
             "pick:dictate-key" => self.pick_toggle(PickFor::DictateKey, cx),
+            "pick:control-key" => self.pick_toggle(PickFor::ControlKey, cx),
+            "control" => self.toggle_control(cx),
+            // Kotoba stepped back from the front, as it is when the person
+            // works in another app.
+            "hide" => cx.hide(),
+            // What the app in front shows, as an agent reads it, into a file.
+            s if s.starts_with("look:") => {
+                let file = s["look:".len()..].to_string();
+                cx.background_spawn(async move {
+                    let _ = std::fs::write(file, crate::act::look().unwrap_or_else(|e| e));
+                })
+                .detach();
+            }
+            "glow:on" => crate::glow::show(),
+            "glow:off" => crate::glow::hide(),
+            "glow:think" => crate::glow::thinking(),
+            s if s.starts_with("glow:level:") => crate::glow::level(s["glow:level:".len()..].parse().unwrap_or(0.)),
+            s if s.starts_with("glowshot:") => {
+                if let Some(n) = crate::glow::number() {
+                    let _ = crate::sys::shoot_number(n, std::path::Path::new(&s["glowshot:".len()..]));
+                }
+            }
+            s if s.starts_with("agent:") => {
+                let agent = crate::agent::AGENTS.iter().find(|a| **a == &s["agent:".len()..]).copied().unwrap_or("");
+                self.set_agent(agent, cx);
+            }
+            // What was said, as words, carried out as if heard: nothing is
+            // recorded, and the steps are real. `say:<words_with_underscores>`.
+            s if s.starts_with("say:") => {
+                let words = s["say:".len()..].replace('_', " ");
+                self.controlling = true;
+                crate::glow::show();
+                self.pill = crate::pill::open(cx);
+                self.carry_words(words, cx);
+            }
             s if s.starts_with("group:") => {
                 if let Some(g) = KeyGroup::ALL.into_iter().find(|g| g.key() == &s["group:".len()..]) {
                     self.open_key_group(g, cx);
@@ -1779,7 +2039,7 @@ impl Kotoba {
             "dark" => self.set_appearance("dark", window, cx),
             "light" => self.set_appearance("light", window, cx),
             "key" => self.toggle_dictation(cx),
-            "reset" => self.reset_dictate_key(cx),
+            "reset" => self.reset_key(Trigger::Dictate, cx),
             // The notes that ask for a permission drawn as if neither
             // were given.
             "untrusted" => {
@@ -1846,6 +2106,20 @@ impl Kotoba {
                     cx,
                 );
             }
+            // A recording followed, as control's key does when it stops.
+            s if s.starts_with("control:file:") => {
+                let path = std::path::PathBuf::from(&s["control:file:".len()..]);
+                self.controlling = true;
+                crate::glow::show();
+                self.pill = crate::pill::open(cx);
+                self.carry_out(
+                    move || {
+                        let bytes = std::fs::read(&path).unwrap_or_default();
+                        dictate::wav_samples(&bytes).map(|(s, ch, rate)| dictate::to_whisper(&s, ch, rate)).unwrap_or_default()
+                    },
+                    cx,
+                );
+            }
             s if s.starts_with("pillshot:") => {
                 let path = std::path::PathBuf::from(&s["pillshot:".len()..]);
                 if let Some(pill) = self.pill {
@@ -1855,6 +2129,67 @@ impl Kotoba {
             other => eprintln!("kotoba: KOTOBA_GO: no step {other:?}"),
         }
         cx.notify();
+    }
+}
+
+/// How one thing said to control ended.
+enum Done {
+    Done,
+    Silence,
+    /// Words from the agent, in the language spoken.
+    Said(String),
+    Word(&'static str),
+    NeedsAgent,
+    Failed(String),
+}
+
+/// What was recorded written down, then followed (`follow`). The terms and
+/// the words to avoid hold here as in dictation: what is typed is theirs.
+fn do_what_was_said(audio: Vec<f32>, model: &'static dictate::Model, planner: &'static dictate::Model, terms: &[String], avoided: &[String], agent: &str, stop: &dictate::Stop) -> Done {
+    if stop.stopped() {
+        return Done::Done;
+    }
+    if audio.iter().all(|s| *s == 0.0) {
+        return Done::Silence;
+    }
+    let words = match dictate::transcribe(model, &audio, terms, stop) {
+        Ok(words) => dictate::avoid(&dictate::spell(&words, terms), avoided),
+        Err(e) => return Done::Failed(e),
+    };
+    if words.is_empty() {
+        return Done::Word(t("Nothing heard"));
+    }
+    follow(&words, planner, agent, stop)
+}
+
+/// The steps for what was said worked out and carried out, or handed to
+/// the agent when it needs the screen read.
+fn follow(words: &str, planner: &'static dictate::Model, agent: &str, stop: &dictate::Stop) -> Done {
+    use kotoba_core::control::{self, Step};
+    let front = crate::act::front().map(|f| f.name).unwrap_or_default();
+    let steps = match control::steps(planner, words, &front, stop) {
+        Ok(Some(steps)) if !steps.is_empty() => steps,
+        Ok(_) => return Done::Word(t("Not understood")),
+        Err(e) => return Done::Failed(e),
+    };
+    if steps.contains(&Step::Ask) {
+        if agent.is_empty() {
+            return Done::NeedsAgent;
+        }
+        return match crate::agent::run(agent, words, stop) {
+            Ok(said) if said.is_empty() => Done::Done,
+            Ok(said) => Done::Said(said),
+            Err(e) if e.is_empty() => Done::Done,
+            Err(e) => Done::Failed(e),
+        };
+    }
+    use crate::act::Failed;
+    match crate::act::run(&steps, words, false, stop) {
+        Ok(()) | Err(Failed::Stopped) => Done::Done,
+        Err(Failed::NoApp(name)) => Done::Said(tf("No app called {name}", &[("name", &name)])),
+        Err(Failed::NoItem(name) | Failed::NotOnScreen(name)) => Done::Said(tf("No {name} here", &[("name", &name)])),
+        Err(Failed::Terminal) => Done::Word(t("Press Return yourself")),
+        Err(Failed::Broke(e)) => Done::Failed(e),
     }
 }
 
@@ -1932,6 +2267,22 @@ fn probe(this: Entity<Kotoba>, handle: WindowHandle<Root>, cx: &mut App) {
                                 let e = ScrollWheelEvent { position: point(px(x), px(y)), delta: ScrollDelta::Pixels(point(px(0.), px(dy / 3.))), modifiers: Modifiers::default(), touch_phase: phase };
                                 window.dispatch_event(PlatformInput::ScrollWheel(e), cx);
                             }
+                        });
+                    }
+                    continue;
+                }
+                // `click:<x>:<y>`: the pointer moved there and pressed, in
+                // points from the window's top left, through the window as
+                // the mouse sends it, so a click handler truly runs.
+                if let Some(at) = step.strip_prefix("click:") {
+                    let n: Vec<f32> = at.split(':').filter_map(|v| v.parse().ok()).collect();
+                    if let [x, y] = n[..] {
+                        let position = point(px(x), px(y));
+                        let modifiers = Modifiers::default();
+                        let _ = cx.update_window(handle.into(), move |_, window, cx| {
+                            window.dispatch_event(PlatformInput::MouseMove(MouseMoveEvent { position, pressed_button: None, modifiers }), cx);
+                            window.dispatch_event(PlatformInput::MouseDown(MouseDownEvent { button: MouseButton::Left, position, modifiers, click_count: 1, first_mouse: false }), cx);
+                            window.dispatch_event(PlatformInput::MouseUp(MouseUpEvent { button: MouseButton::Left, position, modifiers, click_count: 1 }), cx);
                         });
                     }
                     continue;

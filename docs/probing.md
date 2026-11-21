@@ -24,10 +24,12 @@ The picture is taken from inside (`sys::shoot_window`): a process may capture it
 
 - `history`, `terms`, `avoid`, `close`: the sheets. On a list's sheet, `copyall` is Copy All, `deleteall` Delete All and `deleteyes` its confirmation.
 - `keys:<keystroke>`: a key pressed in the window, through its bindings (`keys:cmd-w` closes it).
+- `click:<x>:<y>`: the pointer moved there and pressed, in points from the window's top left, through the window, so the click's handler runs. Opening a list shows nothing of what a choice on it does: press the choice, and read `config.json`.
 - `wheel:<x>:<y>:<dy>`: the wheel turned there, in points from the window's top left, through the window as the mouse sends it.
 - `words:<terms|avoid>:<words>`: words typed into a list's field and added, as Enter does (a comma for a space). `unword:<terms|avoid>`: the list's first word taken out.
 - `pick:dictate-key`, `pick:dictate-keep`, `pick:mic`: the lists that drop down. `group:<one|two|f>`: on More's list, a kind's keys opened beside it.
 - `fstate:<0|1>`: F1 to F12 read as doing what is printed on them (0) or as standard function keys (1), in place of the Mac's setting.
+- `hide`: Kotoba stepped back from the front, as it is when the person works elsewhere. Do this first when control acts on another app: a probe's window floats over it, and takes what is read and scrolled. `say:<words_with_underscores>`: words followed by control, as if heard; the steps are real. `control:file:<wav>`: a recording followed, through the speech model. `look:<file>`: what the app in front shows, as an agent reads it. `control`: control's key pressed. `agent:<claude|codex|none>`: the Agent row. `pick:control-key`: its More. `glow:on`, `glow:off`, `glow:think`, `glow:level:<0 to 1>`: the light; `glowshot:<png>`: a picture of its window, with its alpha, to lay over a ground.
 - `get`: the lightest speech model not here, downloaded. `clean:<on|off>`: post-processing turned on or off.
 - `dark`, `light`: the appearance. `section:<key>`: another section.
 - `untrusted`: the permissions drawn as if neither were given.
@@ -39,8 +41,10 @@ The picture is taken from inside (`sys::shoot_window`): a process may capture it
 - `KOTOBA_LANG=<code>` (an environment variable, not a step): the window in that language (`fr`, `de`, `zh-Hant`, …) in place of the system's. `language:<system|code>`: the language list's choice, as a press on it (in the bundle it changes the app's own `AppleLanguages`; set it back with `language:system`). `pick:language`: the list open.
 - `bar`: prints the menu bar item's frame, from the main screen's top left as a click is posted, and whether it is shown. `barswap:<on|off>` and `baricon:<show|hide>`: Swap clicks and Show in menu bar. `login:<on|off>`: Launch at login (only in the bundle, `scripts/dev-app.sh`; it changes the Mac's Login Items). `menushot:<png>`: the item's menu shown, and a picture of each of the app's windows taken while it is (`<png>` named `-<n>.png`, the menu the `NSPopupMenuWindow`); the capture draws the menu's glass as flat gray.
 
-`KOTOBA_TAP_DEBUG=1` prints every key, click and change of the modifiers the tap watch is handed.
+`KOTOBA_TAP_DEBUG=1` prints every key, click and change of the modifiers the tap watch is handed. `KOTOBA_AGENT_LOG=<file>` keeps all an agent said and did in a run.
+
+Steps run only with a window: give `KOTOBA_SETTINGS`, or `KOTOBA_SHOT` never fires and the copy never quits. Step back with `hide`, and act in the bundle (`scripts/dev-app.sh`), which holds Accessibility.
 
 ## The core from a terminal
 
-`kotoba-core dictate models` lists both kinds of model and whether each is here; `dictate download [key]` fetches one as the settings do (a post-processing key too); `dictate file <wav> [key]` prints the words; `clean <key> <words | file>` runs post-processing on words, or on a file a dictation a line, and prints what it wrote and whether it was taken. The microphone is the app's alone: a process a terminal started is the terminal's in the system's eyes.
+`kotoba-core dictate models` lists both kinds of model and whether each is here; `dictate download [key]` fetches one as the settings do (a post-processing key too); `dictate file <wav> [key]` prints the words; `clean <key> <words | file>` runs post-processing on words, or on a file a dictation a line, and prints what it wrote and whether it was taken; `control <key> <words | file> [app]` prints the steps for what was said, a line each, and carries out none. The microphone is the app's alone: a process a terminal started is the terminal's in the system's eyes.

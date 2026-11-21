@@ -4,9 +4,12 @@
 //! opens the settings window, Kotoba's only window, and the other click
 //! its menu. It runs on macOS alone.
 
+mod act;
+mod agent;
 mod assets;
 mod controls;
 mod fonts;
+mod glow;
 mod i18n;
 mod kotoba;
 mod look;
@@ -17,7 +20,7 @@ mod sys;
 mod widgets;
 
 use gpui::*;
-use kotoba::{CloseWindow, Dictate, Escape, Kotoba, KEY_CONTEXT};
+use kotoba::{CloseWindow, Control, Dictate, Escape, Kotoba, KEY_CONTEXT};
 
 actions!(kotoba_app, [Quit, OpenSettings, Hide, HideOthers, ShowAll]);
 
@@ -39,7 +42,9 @@ fn key_bindings() -> Vec<KeyBinding> {
     // global binding, while Kotoba is in front; the event tap has it in
     // every other app (`sys::outside_keys`). A tap of modifiers alone is
     // no binding: `Kotoba` watches for it.
-    keys.extend(dictate_key(&kotoba_core::config::Config::load().app.dictate_key).map(|k| KeyBinding::new(&k, Dictate, None)));
+    let app = kotoba_core::config::Config::load().app;
+    keys.extend(dictate_key(&app.dictate_key).map(|k| KeyBinding::new(&k, Dictate, None)));
+    keys.extend(control_key(&app.control_key).map(|k| KeyBinding::new(&k, Control, None)));
     keys
 }
 
@@ -51,6 +56,21 @@ fn dictate_key(asked: &str) -> Option<String> {
         return None;
     }
     Some(if Keystroke::parse(asked).is_ok() { asked.to_string() } else { kotoba_core::config::AppConfig::default().dictate_key })
+}
+
+/// Control's key as a binding, as `dictate_key`.
+fn control_key(asked: &str) -> Option<String> {
+    if kotoba_core::dictate::tap(asked).is_some() {
+        return None;
+    }
+    Some(if Keystroke::parse(asked).is_ok() { asked.to_string() } else { kotoba_core::config::AppConfig::default().control_key })
+}
+
+/// Control moved from the key `old` to `new`, as `move_dictate_key`.
+pub fn move_control_key(old: &str, new: &str, cx: &mut App) {
+    let old = control_key(old).map(|k| KeyBinding::new(&k, NoAction, None));
+    let new = control_key(new).map(|k| KeyBinding::new(&k, Control, None));
+    cx.bind_keys(old.into_iter().chain(new));
 }
 
 /// Dictation moved from the key `old` to `new`, at once: the old key's
@@ -66,7 +86,7 @@ pub fn move_dictate_key(old: &str, new: &str, cx: &mut App) {
 /// one: a key for dictation must be one nothing else has.
 pub fn key_taken(binding: &str) -> Option<&'static str> {
     let asked = Keystroke::parse(binding).ok()?.unparse();
-    key_bindings().into_iter().filter(|b| b.action().name() != Dictate.name()).find(|b| b.keystrokes().len() == 1 && b.keystrokes()[0].unparse() == asked).map(|b| b.action().name())
+    key_bindings().into_iter().filter(|b| b.action().name() != Dictate.name() && b.action().name() != Control.name()).find(|b| b.keystrokes().len() == 1 && b.keystrokes()[0].unparse() == asked).map(|b| b.action().name())
 }
 
 /// The menu bar item's menu: each section of the settings, with the
@@ -157,6 +177,11 @@ fn main() {
         cx.on_action(|_: &Dictate, cx| {
             if let Some(k) = cx.try_global::<App_>().map(|a| a.0.clone()) {
                 k.update(cx, |k, cx| k.toggle_dictation(cx));
+            }
+        });
+        cx.on_action(|_: &Control, cx| {
+            if let Some(k) = cx.try_global::<App_>().map(|a| a.0.clone()) {
+                k.update(cx, |k, cx| k.toggle_control(cx));
             }
         });
         // ggml aborts the process at exit while a model holds the GPU's

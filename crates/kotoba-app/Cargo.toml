@@ -32,8 +32,10 @@ rust-embed = { version = "8", features = ["debug-embed", "include-exclude"] }
 objc2 = "0.6"
 # The handler of an AppKit event monitor (`sys::key_events`).
 block2 = "0.6"
-objc2-app-kit = { version = "0.3", features = ["NSView", "NSWindow", "NSResponder", "NSApplication", "NSImage", "NSRunningApplication", "NSWorkspace", "NSPasteboard", "NSPasteboardItem", "NSColor", "NSSound", "NSEvent", "NSScreen", "NSStatusBar", "NSStatusItem", "NSStatusBarButton", "NSButton", "NSControl", "NSMenu", "NSMenuItem", "NSCell", "NSButtonCell", "NSGraphics", "NSImageRep", "NSBitmapImageRep"] }
-objc2-foundation = { version = "0.3", features = ["NSData", "NSString", "NSURL", "NSArray", "NSRange", "NSDictionary", "NSValue", "NSNotification", "NSDistributedNotificationCenter", "NSOperation", "NSGeometry", "NSObject", "NSRunLoop", "NSError", "NSUserDefaults", "NSBundle"] }
+objc2-app-kit = { version = "0.3", features = ["NSView", "NSWindow", "NSResponder", "NSApplication", "NSImage", "NSRunningApplication", "NSWorkspace", "NSPasteboard", "NSPasteboardItem", "NSColor", "NSSound", "NSEvent", "NSScreen", "NSStatusBar", "NSStatusItem", "NSStatusBarButton", "NSButton", "NSControl", "NSMenu", "NSMenuItem", "NSCell", "NSButtonCell", "NSGraphics", "NSImageRep", "NSBitmapImageRep", "NSPanel", "NSGraphicsContext", "NSAccessibility"] }
+objc2-foundation = { version = "0.3", features = ["NSData", "NSString", "NSURL", "NSArray", "NSRange", "NSDictionary", "NSValue", "NSNotification", "NSDistributedNotificationCenter", "NSOperation", "NSGeometry", "NSObject", "NSRunLoop", "NSError", "NSUserDefaults", "NSBundle", "NSFileManager", "NSTimer", "block2"] }
+# The light around the screen (`glow`).
+objc2-quartz-core = { version = "0.3", features = ["CALayer"] }
 objc2-av-foundation = { version = "0.3", features = ["AVCaptureDevice", "AVMediaFormat"] }
 raw-window-handle = "0.6"
 # The menu's icons, drawn from the same SVGs the window draws, by the

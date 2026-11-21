@@ -14,6 +14,8 @@ Download `Kotoba-mac-arm64.dmg` (Apple silicon) or `Kotoba-mac-x64.dmg` (Intel) 
 2. In **Models**, download a speech model. Qwen3-ASR is best with speech that mixes languages; Whisper hears the most languages.
 3. Press the shortcut (⌘⇧D, or another key or a modifier tapped alone, such as Right ⌘, under More), speak, and press it again. Esc cancels, while it listens or while it writes.
 
+To control the Mac by voice, press the Control shortcut (⌥⌘K), say what you want in any language, and press it again: "open Safari", "new tab and go to apple.com", "全选然后复制". Allow Accessibility, and download a post-processing model as well as a speech model. What needs the screen read, such as replying to someone, goes to your own Claude Code or Codex if you choose one in **Control**. Only then does anything leave your Mac: what you say, and what the agent reads on the screen.
+
 Post-processing is in **Models**. **Customize** holds your Preferences for it, the Terms written exactly as you save them, and the words to Avoid. The history of what you said is in **Customize** too.
 
 ## How it is built
