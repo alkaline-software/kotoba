@@ -1,11 +1,17 @@
-//! The light around the screen while Kotoba is being told what to do, as
-//! a phone's assistant has it: colors flowing round the edge, swelling with
-//! the voice. It is Core Animation's, not the toolkit's: a window over
-//! everything that takes no click, with two rings of color turning under
-//! soft masks, drawn by the system at the screen's own rate and costing
-//! this app no frames, while the model has the GPU.
+//! The frame round the screen while Kotoba is being told what to do: four
+//! heavy marks at its corners, as a camera's viewfinder frames what it
+//! looks at. Each mark comes out of its corner along both edges as control
+//! starts, reaches further as the person speaks, slides round the frame
+//! with the others while the steps are worked out and done, and draws back
+//! to a point as control ends. Nothing scales: a mark is a stretch of the
+//! frame's own outline, longer or shorter. Under each mark is a band of
+//! color a little longer than it, its hue set by where it is round the
+//! screen, the colors turning slowly, and faster while it works.
 //!
-//! Called on the main thread alone, as AppKit asks.
+//! It is Core Animation's, not the toolkit's: a window over everything
+//! that takes no click, with shape layers drawn by the system at the
+//! screen's own rate, costing this app no frames while the model has the
+//! GPU. Called on the main thread alone, as AppKit asks.
 
 use std::ffi::c_void;
 
@@ -13,39 +19,46 @@ use objc2::rc::Retained;
 use objc2::runtime::{AnyClass, AnyObject};
 use objc2::{msg_send, MainThreadMarker};
 use objc2_app_kit::{NSBackingStoreType, NSColor, NSPanel, NSScreen, NSWindowCollectionBehavior, NSWindowStyleMask, NSWorkspace};
-use objc2_foundation::{NSMutableArray, NSNumber, NSPoint, NSRect, NSSize, NSString};
+use objc2_foundation::{NSNumber, NSPoint, NSRect, NSSize, NSString, NSUserDefaults};
 
-/// The colors round the ring, the last the first again: an even walk
-/// through lilac, pink, coral, peach and periwinkle.
-const COLORS: [(f64, f64, f64); 7] = [(0.74, 0.51, 0.95), (0.96, 0.73, 0.92), (1.00, 0.40, 0.47), (1.00, 0.73, 0.44), (0.78, 0.53, 1.00), (0.55, 0.62, 1.00), (0.74, 0.51, 0.95)];
-
-/// How deep the wide light reaches in from the edge, and the bright line.
-const WIDE: f64 = 170.;
-const LINE: f64 = 16.;
-/// The mask's scale of the screen: a soft shape loses nothing at a third
-/// of the size.
-const SHRINK: f64 = 3.;
-/// One turn of each ring, in seconds; the two go at different speeds so
-/// their colors never settle.
-const TURN_WIDE: f64 = 7.;
-const TURN_LINE: f64 = 4.5;
-/// How much faster the rings turn while the words are at work.
-const THINKING: f32 = 3.;
+/// How far in from the screen's edge the frame is, and its corners' radius.
+const INSET: f64 = 5.;
+const RADIUS: f64 = 10.;
+/// A mark's stroke, and the band of color under it.
+const STROKE: f64 = 4.;
+const BAND: f64 = 10.;
+/// The band in eight layers, each reaching this much beside the mark and
+/// letting `BAND_STEP` of the color through, so the band fades out past
+/// the mark's ends in steps too small to see; all of it at most
+/// `BAND_OPACITY`.
+const BAND_REACH: [f64; 8] = [1.14, 1.1, 1.06, 1.02, 0.98, 0.94, 0.9, 0.84];
+const BAND_STEP: f64 = 0.22;
+const BAND_OPACITY: f32 = 0.92;
+/// The colors' turn, in degrees a second: at rest, and added while it works.
+const HUE_TURN: f64 = 12.;
+const HUE_WORK: f64 = 70.;
+/// Half a mark's length along the outline, each way from its corner: at
+/// rest, the most the voice adds, and while it works.
+const ARM: f64 = 52.;
+const REACH: f64 = 110.;
+const ARM_WORK: f64 = 72.;
+/// How fast the marks slide round while it works, in points a second, and
+/// how long they take to come up to that speed.
+const SLIDE: f64 = 260.;
+const SPEED_UP: f64 = 1.2;
 const IN_S: f64 = 0.55;
 const OUT_S: f64 = 0.4;
-/// How far the light stands out past the edge when quiet: the voice brings
-/// it in.
-const QUIET: f64 = 1.018;
-const LOUD: f64 = 0.985;
+/// Points of a corner's arc in the outline.
+const ARC_STEPS: usize = 24;
 
 #[link(name = "CoreGraphics", kind = "framework")]
 extern "C" {
     fn CGColorCreateSRGB(r: f64, g: f64, b: f64, a: f64) -> *mut c_void;
     fn CGColorRelease(color: *mut c_void);
-    fn CGBitmapContextCreate(data: *mut c_void, w: usize, h: usize, bits: usize, row: usize, space: *mut c_void, info: u32) -> *mut c_void;
-    fn CGBitmapContextCreateImage(context: *mut c_void) -> *mut c_void;
-    fn CGContextRelease(context: *mut c_void);
-    fn CGImageRelease(image: *mut c_void);
+    fn CGPathCreateMutable() -> *mut c_void;
+    fn CGPathMoveToPoint(path: *mut c_void, transform: *const c_void, x: f64, y: f64);
+    fn CGPathAddLineToPoint(path: *mut c_void, transform: *const c_void, x: f64, y: f64);
+    fn CGPathRelease(path: *const c_void);
 }
 
 #[link(name = "QuartzCore", kind = "framework")]
@@ -55,11 +68,17 @@ extern "C" {
 
 struct Glow {
     window: Retained<NSPanel>,
-    wide: Retained<AnyObject>,
-    rings: [Retained<AnyObject>; 2],
+    /// The band's layers and the marks, each on the same outline, with how
+    /// far each reaches beside a mark's length.
+    marks: Vec<(Retained<AnyObject>, f64)>,
+    /// What turns the colors faster while it works.
+    spin: Retained<AnyObject>,
+    /// The outline's length once round: each layer's path goes round twice.
+    round: f64,
+    sliding: bool,
 }
 
-/// The one light, on the main thread alone.
+/// The one frame, on the main thread alone.
 struct One(Option<Glow>);
 // Touched only from the main thread (`on_main`).
 unsafe impl Send for One {}
@@ -78,9 +97,20 @@ fn set_key(target: &AnyObject, key: &str, value: f64) {
     }
 }
 
-fn frame_of(target: &AnyObject, frame: NSRect) {
+/// A Core Foundation value (a color, a path) set by key, as Core Animation
+/// takes them.
+fn set_ref(target: &AnyObject, key: &str, value: *const c_void) {
+    let key = NSString::from_str(key);
     unsafe {
-        let _: () = msg_send![target, setFrame: frame];
+        let value: Option<&AnyObject> = (value as *const AnyObject).as_ref();
+        let _: () = msg_send![target, setValue: value, forKey: &*key];
+    }
+}
+
+fn set_text(target: &AnyObject, key: &str, value: &str) {
+    let (key, value) = (NSString::from_str(key), NSString::from_str(value));
+    unsafe {
+        let _: () = msg_send![target, setValue: &*value, forKey: &*key];
     }
 }
 
@@ -105,93 +135,205 @@ fn together(seconds: f64, change: impl FnOnce()) {
     }
 }
 
-/// A ring of color, turning, as wide as the screen's diagonal so its
-/// corners stay past the screen's as it turns.
-fn ring(size: NSSize, turn: f64, reversed: bool, still: bool) -> Retained<AnyObject> {
-    let side = (size.width * size.width + size.height * size.height).sqrt() * 1.05;
-    let ring = layer("CAGradientLayer");
-    let colors = NSMutableArray::<AnyObject>::new();
-    for (r, g, b) in COLORS {
-        unsafe {
-            let color = CGColorCreateSRGB(r, g, b, 1.);
-            colors.addObject(&*(color as *mut AnyObject));
-            CGColorRelease(color);
-        }
-    }
-    frame_of(&ring, NSRect::new(NSPoint::new((size.width - side) / 2., (size.height - side) / 2.), NSSize::new(side, side)));
-    unsafe {
-        let conic = NSString::from_str("conic");
-        let _: () = msg_send![&*ring, setType: &*conic];
-        let _: () = msg_send![&*ring, setColors: &*colors];
-        let _: () = msg_send![&*ring, setStartPoint: NSPoint::new(0.5, 0.5)];
-        let _: () = msg_send![&*ring, setEndPoint: NSPoint::new(0.5, 0.)];
-    }
-    if still {
-        return ring;
-    }
-    let class = AnyClass::get(c"CABasicAnimation").expect("QuartzCore");
-    unsafe {
-        let path = NSString::from_str("transform.rotation.z");
-        let spin: Retained<AnyObject> = msg_send![class, animationWithKeyPath: &*path];
-        let (from, to) = (NSNumber::new_f64(0.), NSNumber::new_f64(if reversed { -std::f64::consts::TAU } else { std::f64::consts::TAU }));
-        let _: () = msg_send![&*spin, setFromValue: &*from];
-        let _: () = msg_send![&*spin, setToValue: &*to];
-        let _: () = msg_send![&*spin, setDuration: turn];
-        let _: () = msg_send![&*spin, setRepeatCount: f32::INFINITY];
-        let _: () = msg_send![&*spin, setRemovedOnCompletion: false];
-        let key = NSString::from_str("turn");
-        let _: () = msg_send![&*ring, addAnimation: &*spin, forKey: &*key];
-    }
-    ring
+/// The frame's outline: a rounded box `INSET` in, as points from the
+/// middle of its top, clockwise as seen, with the length run to each, and
+/// where on it each corner's middle is. In the view's points, the origin
+/// at the bottom left.
+struct Outline {
+    points: Vec<(f64, f64)>,
+    run: Vec<f64>,
+    corners: [f64; 4],
 }
 
-/// How far a point is inside the screen, in points: the nearest edge, the
-/// four blended, so lines of one depth curve round the corners. A rounded
-/// box's distance keeps a crease from each corner toward the middle.
-fn inside(x: f64, y: f64, w: f64, h: f64, soft: f64) -> f64 {
-    let near = [x, w - x, y, h - y].iter().map(|d| (-d / soft).exp()).sum::<f64>();
-    -soft * near.ln()
+impl Outline {
+    fn new(size: NSSize) -> Outline {
+        let (w, h) = (size.width, size.height);
+        let (left, right, bottom, top) = (INSET, w - INSET, INSET, h - INSET);
+        let r = RADIUS.min((right - left) / 2.).min((top - bottom) / 2.);
+        let mut points = vec![(w / 2., top)];
+        let mut corners = [0.; 4];
+        // Each corner's arc, from the angle it starts at, clockwise as seen
+        // (the angle falling, with y up).
+        let arcs = [(right - r, top - r, 90f64), (right - r, bottom + r, 0.), (left + r, bottom + r, -90.), (left + r, top - r, -180.)];
+        let mut middles = Vec::new();
+        for (cx, cy, from) in arcs {
+            for k in 0..=ARC_STEPS {
+                let a = (from - 90. * k as f64 / ARC_STEPS as f64).to_radians();
+                points.push((cx + r * a.cos(), cy + r * a.sin()));
+                if k == ARC_STEPS / 2 {
+                    middles.push(points.len() - 1);
+                }
+            }
+        }
+        points.push((w / 2., top));
+        let mut run = vec![0.];
+        for k in 1..points.len() {
+            let (a, b) = (points[k - 1], points[k]);
+            run.push(run[k - 1] + ((b.0 - a.0).powi(2) + (b.1 - a.1).powi(2)).sqrt());
+        }
+        for (c, &m) in corners.iter_mut().zip(&middles) {
+            *c = run[m];
+        }
+        Outline { points, run, corners }
+    }
+
+    fn round(&self) -> f64 {
+        *self.run.last().unwrap()
+    }
+
+    fn at(&self, d: f64) -> (f64, f64) {
+        let d = d.rem_euclid(self.round());
+        let k = self.run.partition_point(|&l| l <= d).clamp(1, self.run.len() - 1);
+        let f = (d - self.run[k - 1]) / (self.run[k] - self.run[k - 1]).max(1e-9);
+        let (a, b) = (self.points[k - 1], self.points[k]);
+        (a.0 + (b.0 - a.0) * f, a.1 + (b.1 - a.1) * f)
+    }
+
+    /// The outline twice round, from `from`. Answers a path the caller
+    /// releases.
+    fn path_from(&self, from: f64) -> *mut c_void {
+        let round = self.round();
+        let path = unsafe { CGPathCreateMutable() };
+        let (x, y) = self.at(from);
+        unsafe { CGPathMoveToPoint(path, std::ptr::null(), x, y) };
+        let start = from.rem_euclid(round);
+        let mut base = from - start;
+        let mut k = self.run.partition_point(|&l| l <= start);
+        loop {
+            if k >= self.run.len() {
+                k = 1;
+                base += round;
+            }
+            if base + self.run[k] >= from + 2. * round {
+                break;
+            }
+            let (x, y) = self.points[k];
+            unsafe { CGPathAddLineToPoint(path, std::ptr::null(), x, y) };
+            k += 1;
+        }
+        let (x, y) = self.at(from + 2. * round);
+        unsafe { CGPathAddLineToPoint(path, std::ptr::null(), x, y) };
+        path
+    }
 }
 
-/// A mask of the light's depth: full at the edge, nothing `depth` in, the
-/// fall of it `curve`. An image of alpha alone, a third of the screen's
-/// size, which the system stretches.
-fn mask(size: NSSize, depth: f64, curve: f64) -> Retained<AnyObject> {
-    let (w, h) = ((size.width / SHRINK).ceil() as usize, (size.height / SHRINK).ceil() as usize);
-    let mut alpha = vec![0u8; w * h];
-    for (row, line) in alpha.chunks_mut(w).enumerate() {
-        for (col, px) in line.iter_mut().enumerate() {
-            let d = inside((col as f64 + 0.5) * SHRINK, (row as f64 + 0.5) * SHRINK, size.width, size.height, depth / 4.).max(0.);
-            *px = ((1. - (d / depth).min(1.)).powf(curve) * 255.) as u8;
-        }
-    }
-    let shape = layer("CALayer");
-    frame_of(&shape, NSRect::new(NSPoint::new(0., 0.), size));
+/// A mark's layer: the outline twice round from half a round before its
+/// corner, so the corner is a quarter of the way along and a mark can
+/// slide a whole round and still be on the path.
+fn mark(outline: &Outline, corner: f64, size: NSSize, width: f64, color: (f64, f64, f64, f64)) -> Retained<AnyObject> {
+    let shape = layer("CAShapeLayer");
     unsafe {
-        // `kCGImageAlphaOnly`: eight bits a pixel, no color space.
-        let context = CGBitmapContextCreate(alpha.as_mut_ptr() as *mut c_void, w, h, 8, w, std::ptr::null_mut(), 7);
-        let image = CGBitmapContextCreateImage(context);
-        let _: () = msg_send![&*shape, setContents: image as *mut AnyObject];
-        CGImageRelease(image);
-        CGContextRelease(context);
+        let _: () = msg_send![&*shape, setFrame: NSRect::new(NSPoint::new(0., 0.), size)];
     }
+    let path = outline.path_from(corner - outline.round() / 2.);
+    set_ref(&shape, "path", path);
+    unsafe { CGPathRelease(path) };
+    let color = unsafe { CGColorCreateSRGB(color.0, color.1, color.2, color.3) };
+    set_ref(&shape, "strokeColor", color);
+    unsafe { CGColorRelease(color) };
+    set_ref(&shape, "fillColor", std::ptr::null());
+    set_key(&shape, "lineWidth", width);
+    set_text(&shape, "lineCap", "butt");
+    set_text(&shape, "lineJoin", "round");
     shape
 }
 
-fn band(size: NSSize, depth: f64, curve: f64, turn: f64, reversed: bool, still: bool) -> (Retained<AnyObject>, Retained<AnyObject>) {
-    let holder = layer("CALayer");
-    frame_of(&holder, NSRect::new(NSPoint::new(0., 0.), size));
-    let ring = ring(size, turn, reversed, still);
-    let shape = mask(size, depth, curve);
-    unsafe {
-        let _: () = msg_send![&*holder, addSublayer: &*ring];
-        let _: () = msg_send![&*holder, setMask: &*shape];
+/// Each mark `arm` each way from its corner, where a mark rests, and the
+/// band's layers as far beside it as each reaches.
+fn reach(glow: &Glow, arm: f64) {
+    for (m, k) in &glow.marks {
+        let half = arm * k / (2. * glow.round);
+        set_key(m, "strokeStart", 0.25 - half);
+        set_key(m, "strokeEnd", 0.25 + half);
     }
-    (holder, ring)
 }
 
 fn calm() -> bool {
     NSWorkspace::sharedWorkspace().accessibilityDisplayShouldReduceMotion()
+}
+
+/// Dark ink on a light Mac, light ink on a dark one, and the lightness of
+/// the band's colors to go with it.
+fn inks() -> ((f64, f64, f64, f64), f64) {
+    let style = NSUserDefaults::standardUserDefaults().stringForKey(&NSString::from_str("AppleInterfaceStyle"));
+    if style.map(|s| s.to_string() == "Dark").unwrap_or(false) {
+        ((0.953, 0.945, 0.918, 1.), 0.66)
+    } else {
+        ((0.110, 0.129, 0.114, 1.), 0.56)
+    }
+}
+
+/// A hue in degrees at saturation 0.72 and lightness `l`, as sRGB.
+fn hue(h: f64, l: f64) -> (f64, f64, f64) {
+    let c = (1. - (2. * l - 1.).abs()) * 0.72;
+    let h = h.rem_euclid(360.) / 60.;
+    let x = c * (1. - (h % 2. - 1.).abs());
+    let (r, g, b) = match h as u32 {
+        0 => (c, x, 0.),
+        1 => (x, c, 0.),
+        2 => (0., c, x),
+        3 => (0., x, c),
+        4 => (x, 0., c),
+        _ => (c, 0., x),
+    };
+    let m = l - c / 2.;
+    (r + m, g + m, b + m)
+}
+
+/// The wheel of colors the band shows through: a conic gradient round the
+/// screen's middle, red at the right, in a square that covers the screen
+/// at any turn.
+fn wheel(size: NSSize, lightness: f64) -> Retained<AnyObject> {
+    let side = (size.width.powi(2) + size.height.powi(2)).sqrt();
+    let wheel = layer("CAGradientLayer");
+    let colors: Retained<AnyObject> = unsafe { msg_send![AnyClass::get(c"NSMutableArray").expect("Foundation"), array] };
+    for k in 0..=12 {
+        let (r, g, b) = hue(k as f64 * 30., lightness);
+        unsafe {
+            let color = CGColorCreateSRGB(r, g, b, 1.);
+            let _: () = msg_send![&*colors, addObject: &*(color as *const AnyObject)];
+            CGColorRelease(color);
+        }
+    }
+    set_ref(&wheel, "colors", Retained::as_ptr(&colors) as *const c_void);
+    set_text(&wheel, "type", "conic");
+    unsafe {
+        let _: () = msg_send![&*wheel, setFrame: NSRect::new(NSPoint::new(0., 0.), NSSize::new(side, side))];
+        let _: () = msg_send![&*wheel, setStartPoint: NSPoint::new(0.5, 0.5)];
+        let _: () = msg_send![&*wheel, setEndPoint: NSPoint::new(1., 0.5)];
+    }
+    wheel
+}
+
+/// An animation of `key` on `target` from `from` to `to`: begun at `begin`
+/// (media time), over `seconds`, eased in or even, held at its end, or
+/// over and over.
+fn animate(target: &AnyObject, key: &str, name: &str, (from, to): (f64, f64), begin: f64, seconds: f64, ease_in: bool, repeat: bool) {
+    let class = AnyClass::get(c"CABasicAnimation").expect("QuartzCore");
+    unsafe {
+        let path = NSString::from_str(key);
+        let a: Retained<AnyObject> = msg_send![class, animationWithKeyPath: &*path];
+        let (from, to) = (NSNumber::new_f64(from), NSNumber::new_f64(to));
+        let _: () = msg_send![&*a, setFromValue: &*from];
+        let _: () = msg_send![&*a, setToValue: &*to];
+        let _: () = msg_send![&*a, setBeginTime: begin];
+        let _: () = msg_send![&*a, setDuration: seconds];
+        if ease_in {
+            let curve = AnyClass::get(c"CAMediaTimingFunction").expect("QuartzCore");
+            let name = NSString::from_str("easeIn");
+            let ease_in: Retained<AnyObject> = msg_send![curve, functionWithName: &*name];
+            let _: () = msg_send![&*a, setTimingFunction: &*ease_in];
+        }
+        if repeat {
+            let _: () = msg_send![&*a, setRepeatCount: f32::INFINITY];
+        } else {
+            let forwards = NSString::from_str("forwards");
+            let _: () = msg_send![&*a, setFillMode: &*forwards];
+        }
+        let _: () = msg_send![&*a, setRemovedOnCompletion: false];
+        let name = NSString::from_str(name);
+        let _: () = msg_send![target, addAnimation: &*a, forKey: &*name];
+    }
 }
 
 fn screen_under_pointer(mtm: MainThreadMarker) -> Option<Retained<NSScreen>> {
@@ -205,7 +347,7 @@ fn screen_under_pointer(mtm: MainThreadMarker) -> Option<Retained<NSScreen>> {
     found.or_else(|| screens.firstObject())
 }
 
-/// The light comes in from past the screen's edge.
+/// The marks come out of the corners.
 pub fn show() {
     let Some(mtm) = MainThreadMarker::new() else { return };
     let mut one = GLOW.lock().unwrap();
@@ -229,68 +371,130 @@ pub fn show() {
     let root = layer("CALayer");
     view.setLayer(Some(unsafe { &*(Retained::as_ptr(&root) as *const objc2_quartz_core::CALayer) }));
     view.setWantsLayer(true);
-    let still = calm();
     let size = frame.size;
-    let (wide, spin_wide) = band(size, WIDE, 1.9, TURN_WIDE, false, still);
-    let (line, spin_line) = band(size, LINE, 1.2, TURN_LINE, true, still);
+    let outline = Outline::new(size);
+    let (ink, lightness) = inks();
+    let add = |to: &AnyObject, sub: &AnyObject| unsafe {
+        let _: () = msg_send![to, addSublayer: sub];
+    };
+    // The band: the wheel of colors, in a layer that turns it while it
+    // works, seen through the band's own layers (`stencil`).
+    let (band, stencil, spin) = (layer("CALayer"), layer("CALayer"), layer("CALayer"));
+    let side = (size.width.powi(2) + size.height.powi(2)).sqrt();
     unsafe {
-        let _: () = msg_send![&*root, addSublayer: &*wide];
-        let _: () = msg_send![&*root, addSublayer: &*line];
+        let whole = NSRect::new(NSPoint::new(0., 0.), size);
+        let _: () = msg_send![&*band, setFrame: whole];
+        let _: () = msg_send![&*stencil, setFrame: whole];
+        let _: () = msg_send![&*spin, setFrame: NSRect::new(NSPoint::new((size.width - side) / 2., (size.height - side) / 2.), NSSize::new(side, side))];
+        let _: () = msg_send![&*band, setOpacity: BAND_OPACITY];
+        let _: () = msg_send![&*band, setMask: &*stencil];
     }
-    together(0., || {
-        set_key(&root, "opacity", 0.);
-        set_key(&wide, "transform.scale", 1.14);
-    });
-    window.orderFrontRegardless();
-    together(IN_S, || {
-        set_key(&root, "opacity", 1.);
-        set_key(&wide, "transform.scale", QUIET);
-    });
-    one.0 = Some(Glow { window, wide, rings: [spin_wide, spin_line] });
+    let wheel = wheel(size, lightness);
+    add(&spin, &wheel);
+    add(&band, &spin);
+    add(&root, &band);
+    let mut marks = Vec::new();
+    for k in BAND_REACH {
+        for &corner in &outline.corners {
+            let m = mark(&outline, corner, size, BAND, (1., 1., 1., 1.));
+            set_key(&m, "opacity", BAND_STEP);
+            add(&stencil, &m);
+            marks.push((m, k));
+        }
+    }
+    for &corner in &outline.corners {
+        let m = mark(&outline, corner, size, STROKE, ink);
+        add(&root, &m);
+        marks.push((m, 1.));
+    }
+    // The colors turn, clockwise as seen, the way the marks slide.
+    if !calm() {
+        let turn = (0., -std::f64::consts::TAU);
+        animate(&wheel, "transform.rotation.z", "turn", turn, unsafe { CACurrentMediaTime() }, 360. / HUE_TURN, false, true);
+    }
+    let glow = Glow { window, marks, spin, round: outline.round(), sliding: false };
+    together(0., || reach(&glow, 0.));
+    glow.window.orderFrontRegardless();
+    together(IN_S, || reach(&glow, ARM));
+    one.0 = Some(glow);
 }
 
-/// The voice's loudness, 0 to 1: the light swells in with it.
+/// The voice's loudness, 0 to 1: the marks reach further with it.
 pub fn level(loud: f32) {
     let one = GLOW.lock().unwrap();
     let Some(glow) = &one.0 else { return };
+    if glow.sliding || calm() {
+        return;
+    }
+    let arm = ARM + REACH * (loud.clamp(0., 1.) as f64).sqrt();
+    together(0.14, || reach(glow, arm));
+}
+
+/// The marks settle to their working length and slide round together,
+/// coming up to speed, while the steps are worked out and carried out.
+pub fn thinking() {
+    let mut one = GLOW.lock().unwrap();
+    let Some(glow) = &mut one.0 else { return };
+    if glow.sliding {
+        return;
+    }
+    together(0.3, || reach(glow, ARM_WORK));
     if calm() {
         return;
     }
-    let scale = QUIET + (LOUD - QUIET) * (loud.clamp(0., 1.) as f64).sqrt();
-    together(0.14, || set_key(&glow.wide, "transform.scale", scale));
-}
-
-/// The rings turn faster, from where they are, while the steps are worked
-/// out and carried out, and the light rests at its full depth.
-pub fn thinking() {
-    let one = GLOW.lock().unwrap();
-    let Some(glow) = &one.0 else { return };
-    let quick = !calm();
-    together(0.3, || set_key(&glow.wide, "transform.scale", 1.));
-    if !quick {
-        return;
-    }
-    for ring in &glow.rings {
-        unsafe {
-            let now = CACurrentMediaTime();
-            let there: f64 = msg_send![&**ring, convertTime: now, fromLayer: std::ptr::null::<AnyObject>()];
-            let _: () = msg_send![&**ring, setTimeOffset: there];
-            let _: () = msg_send![&**ring, setBeginTime: now];
-            let _: () = msg_send![&**ring, setSpeed: THINKING];
+    glow.sliding = true;
+    // A round is half of each path. The first stretch eases in: the
+    // system's ease-in ends 1.72 times as fast as its average, so it
+    // covers what the slide's speed over `SPEED_UP` would, over 1.72.
+    let ease = SLIDE * SPEED_UP / 1.724 / (2. * glow.round);
+    let round_s = glow.round / SLIDE;
+    let now = unsafe { CACurrentMediaTime() } + 0.3;
+    for (m, k) in &glow.marks {
+        let half = ARM_WORK * k / (2. * glow.round);
+        for (key, at) in [("strokeStart", 0.25 - half), ("strokeEnd", 0.25 + half)] {
+            animate(m, key, &format!("{key}.in"), (at, at + ease), now, SPEED_UP, true, false);
+            // Then round and round: a round on is the same place, so
+            // starting again is not seen.
+            animate(m, key, &format!("{key}.turn"), (at + ease, at + ease + 0.5), now + SPEED_UP, round_s, false, true);
         }
     }
+    // The colors turn faster, coming up to speed with the marks.
+    let (fast, tau) = (HUE_WORK.to_radians(), std::f64::consts::TAU);
+    let first = fast * SPEED_UP / 1.724;
+    animate(&glow.spin, "transform.rotation.z", "in", (0., -first), now, SPEED_UP, true, false);
+    animate(&glow.spin, "transform.rotation.z", "turn", (-first, -first - tau), now + SPEED_UP, tau / fast, false, true);
 }
 
-/// The light goes back out past the edge, and its window with it.
+/// Each mark draws back to its middle, wherever it is, and the window goes
+/// with them.
 pub fn hide() {
     let Some(glow) = GLOW.lock().unwrap().0.take() else { return };
-    if let Some(root) = glow.window.contentView().and_then(|v| v.layer()) {
-        let root: &AnyObject = unsafe { &*(Retained::as_ptr(&root) as *const AnyObject) };
-        together(OUT_S, || {
-            set_key(root, "opacity", 0.);
-            set_key(&glow.wide, "transform.scale", 1.14);
-        });
-    }
+    // Held where the slide has them, then let go of the slide.
+    let ends: Vec<(f64, f64)> = glow
+        .marks
+        .iter()
+        .map(|(m, _)| unsafe {
+            let seen: Option<Retained<AnyObject>> = msg_send![&**m, presentationLayer];
+            let seen = seen.unwrap_or_else(|| m.clone());
+            let (a, b): (f64, f64) = (msg_send![&*seen, strokeStart], msg_send![&*seen, strokeEnd]);
+            (a, b)
+        })
+        .collect();
+    together(0., || {
+        for ((m, _), &(a, b)) in glow.marks.iter().zip(&ends) {
+            unsafe {
+                let _: () = msg_send![&**m, removeAllAnimations];
+            }
+            set_key(m, "strokeStart", a);
+            set_key(m, "strokeEnd", b);
+        }
+    });
+    together(OUT_S, || {
+        for ((m, _), &(a, b)) in glow.marks.iter().zip(&ends) {
+            set_key(m, "strokeStart", (a + b) / 2.);
+            set_key(m, "strokeEnd", (a + b) / 2.);
+        }
+    });
     let window = glow.window;
     // Gone from the screen at the motion's end.
     let block = block2::RcBlock::new(move |_: std::ptr::NonNull<objc2_foundation::NSTimer>| window.orderOut(None));

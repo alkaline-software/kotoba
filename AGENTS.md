@@ -4,7 +4,7 @@
 
 **Kotoba** (言葉, "words") is a macOS menu bar app for dictation anywhere: press a shortcut in any app, speak, and the words are pasted where the cursor is. A speech model on this Mac writes down what was said, and a small language model, when post-processing is on, tidies it up while keeping to what was said. Nothing said leaves the machine.
 
-It also controls the Mac by voice: another key, a sentence in any language, and the language model turns it into steps Kotoba carries out, with a light around the screen while it does. What needs the screen read goes to the person's own Claude Code or Codex, when they turn one on: the one place anything said leaves the machine (`docs/control.md`).
+It also controls the Mac by voice: another key, a sentence in any language, and the language model turns it into steps Kotoba carries out, with a frame round the screen while it does. What needs the screen read goes to the person's own Claude Code or Codex, when they turn one on: the one place anything said leaves the machine (`docs/control.md`).
 
 It is Emaki's dictation moved into an app of its own (Emaki is at `../emaki`). Kotoba is an Alkaline Software product: Rust, GPUI (Zed's toolkit) with the vendored gpui-component, a core crate with no window and an app crate with the window. It stands on its own: it never reads `~/.emaki`, and the person downloads its models again.
 
@@ -83,7 +83,7 @@ crates/kotoba-app/         the window
   src/pill.rs                the pill at the top of the screen
   src/act.rs                 control's hands: apps, keys, the pointer, what the screen shows
   src/agent.rs               the person's agent, run with Kotoba's tools alone
-  src/glow.rs                the light around the screen
+  src/glow.rs                the frame round the screen while control works
   src/sys.rs                 the Mac's side: menu bar item, event tap, paste, sounds, permissions, screens
   src/i18n.rs                the window's words in the person's language
   src/look.rs                the appearance and the accent
@@ -93,7 +93,7 @@ crates/kotoba-app/         the window
   macos/                     the Info.plist additions, the entitlements, the microphone's question in each language
 vendor/gpui-component/     the vendored toolkit, with its UPSTREAM.md
 vendor/llama.cpp/          libllama's sources, with its UPSTREAM.md
-scripts/                   dev-app.sh, relaunch.sh, make-icon.sh, make-readme-gif.sh and readme/, release-*.sh, dictate-sounds.py
+scripts/                   dev-app.sh, relaunch.sh, make-icon.sh, make-readme-gif.sh and readme/, release-*.sh, dictate-sounds.py, control-sounds.R
 docs/                      how each part works and its traps; release.md, how to cut a release; probing.md; optimize.md, the optimization passes and their log
 CHANGELOG.md               one section per release; the release job reads it
 ```

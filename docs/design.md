@@ -4,7 +4,7 @@ The standard every part of Kotoba a person sees is held to: the settings window,
 
 ## Rules
 
-- **Calm.** One accent, green (`look::GREEN`), for what is on, in use or the one thing a page is for. Nothing else competes with it: a page with many of the same action (seven Downloads) draws them quiet. A color that stands for something else (a model maker's mark) marks that thing and nothing else. The light around the screen, while the Mac is being told what to do, is the one place many colors meet, outside the window (`docs/control.md`).
+- **Calm.** One accent, green (`look::GREEN`), for what is on, in use or the one thing a page is for. Nothing else competes with it: a page with many of the same action (seven Downloads) draws them quiet. A color that stands for something else (a model maker's mark) marks that thing and nothing else. Control's frame round the screen is the one place many colors show, under its dark marks, since it sits over every app and stands for none (`docs/control.md`, The frame).
 - **Faded means out of reach.** Only what does not answer a press is drawn faded. What is off but can still be used stays at full ink; off shows in its switch and in the accent going.
 - **Everything fits.** Every section shows all it has without scrolling. The page still scrolls, for what a fold opens or what is added later; a new row that would push a section past the window means the section is reworked, not left to scroll. Two sections that read as one are merged: the updates are under About.
 - **Nothing jumps.** What appears, goes, opens, closes, grows, moves, fills or turns does so over a moment, with the pattern its neighbors use (`docs/window.md`, Motion). A section's name fades with its page.

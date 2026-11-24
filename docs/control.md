@@ -1,6 +1,6 @@
 # Control
 
-The Mac operated by voice. About `crates/kotoba-core/src/control.rs`, and in the app `act.rs` (the hands), `agent.rs` (the person's agent), `glow.rs` (the light around the screen), and control's part of `kotoba.rs`.
+The Mac operated by voice. About `crates/kotoba-core/src/control.rs`, and in the app `act.rs` (the hands), `agent.rs` (the person's agent), `glow.rs` (the frame round the screen), and control's part of `kotoba.rs`.
 
 ## Rules
 
@@ -18,7 +18,7 @@ The Mac operated by voice. About `crates/kotoba-core/src/control.rs`, and in the
 
 ## One thing said
 
-The key (`app.control_key`, ⌥⌘K unless the settings say another) starts it, as dictation's does (`toggle_control`): the same chime, microphone and pill, and the light around the screen. Pressed again:
+The key (`app.control_key`, ⌥⌘K unless the settings say another) starts it, as dictation's does (`toggle_control`): the same microphone, but a sound of its own and no pill. Its sound (`control-start.wav`, `control-stop.wav`, from `scripts/control-sounds.R`) is a low F sharp in octaves and then the C sharp above it, the other way round to stop, as loud as dictation's chime and as soft: firmer, brighter or many-noted candidates sounded like a warning. The frame round the screen is all that shows while control listens and works; the pill comes down only at the end, to say how it ended when there is something to say (nothing heard, not understood, an agent's last words). Pressed again:
 
 1. The speech model writes it down, spelled with the terms and without the words to avoid. Nothing is kept in the history.
 2. The language model (post-processing's, whether or not post-processing is on) writes the steps (`control::steps`), about 0.12 s on the 4B once it is loaded.
@@ -54,13 +54,13 @@ Told what was said, the agent may stop and say so. It is told to check who a mes
 
 For a release, read Anthropic's page before this ships: https://code.claude.com/docs/en/legal-and-compliance. It says Anthropic does not let third-party developers route requests through a person's plan credentials on their users' behalf, or offer Claude.ai login in their own apps; that this does not stop a person signing in to the unmodified Claude Code with their own subscription; and that running Claude Code in a product requires its Commercial Terms, with the binary unmodified and each person signed in themselves. Kotoba holds to the conditions it can see (it runs the person's own install and touches no login), but whether a shipped app starting `claude -p` under a person's plan is allowed is Anthropic's to say, and has not been asked. OpenAI's terms for Codex were not found to say either way. An API key in the person's environment is the plain way out for Claude Code.
 
-## The light
+## The frame
 
-Two rings of color (`CAGradientLayer`, conic, as wide as the screen's diagonal) turn at different speeds and in opposite ways under two soft masks of alpha alone: a wide veil and a bright line. It is Core Animation's, drawn by the system at the screen's rate, because the toolkit has no conic gradient, and a frame of ours is a frame the model waits behind. The window is a panel at the status level, over the menu bar and the Dock and under the pill, taking no click, in every space.
+Four heavy marks at the screen's corners, as a camera's viewfinder frames what it looks at, in ink: dark on a light Mac and light on a dark one (`AppleInterfaceStyle`). Under each mark is a band of color 10 points wide and a little longer than it, fading out past its ends, so color comes out of all four corners and the mark is seen on any ground. The band's hue is set by where it is round the screen: it shows a wheel of colors (a conic `CAGradientLayer` round the screen's middle) through eight layers of each band (`BAND_REACH`), each reaching a little less far and letting part of the color through, which makes the fade. The wheel turns slowly, clockwise as the marks slide, and faster while it works. A soft glow of many colors round the whole edge was too close to Apple's own and was taken out, as were a thin line of color and the marks alone in ink after it.
 
-The voice brings the veil in (`level`), by scale, from past the edge. While the steps are worked out and done the rings turn three times as fast, from where they stand (`thinking`): `timeOffset` and `beginTime` are set with `speed`, or they would jump. With Reduce Motion nothing turns or swells.
+Each mark is a stretch of one outline, a rounded box 5 points in, close to the screen's edge: a `CAShapeLayer` whose path goes round the outline twice from half a round before its corner, so the corner sits a quarter of the way along. A mark is its `strokeStart` and `strokeEnd`. Nothing scales: as control starts each mark comes out of its corner along both edges (`show`), the voice makes them reach further (`level`), and as control ends each draws back to its middle and is gone (`hide`). While the steps are worked out and done the marks slide round the outline together (`thinking`), easing up to speed: an ease-in, then a slide of half the path repeated, which starts again a whole round on, where nothing looks different. `hide` reads where the slide has them (`presentationLayer`) before letting it go, or they would jump back to their corners. The band's layers are marks too, and move with them. With Reduce Motion the voice changes nothing, nothing slides and the colors stay where they are.
 
-The mask's depth is a blend of the distances to all four edges (`inside`). A rounded box's distance keeps a crease from each corner toward the middle.
+It is Core Animation's, drawn by the system at the screen's rate: a frame of ours is a frame the model waits behind. The window is a panel at the status level, over the menu bar and the Dock and under the pill, taking no click, in every space.
 
 ## What Talon showed
 

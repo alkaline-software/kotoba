@@ -44,6 +44,10 @@ pub const SECTIONS: &[(&str, &str, &str)] = &[
 /// stops. A short system sound was tried and read as the Mac's alert.
 const DICTATE_START: &[u8] = include_bytes!("../assets/sounds/dictate-start.wav");
 const DICTATE_STOP: &[u8] = include_bytes!("../assets/sounds/dictate-stop.wav");
+/// Control's own (`scripts/control-sounds.R`): a low tap, then a higher
+/// one as it starts to listen, and the other way round as it stops.
+const CONTROL_START: &[u8] = include_bytes!("../assets/sounds/control-start.wav");
+const CONTROL_STOP: &[u8] = include_bytes!("../assets/sounds/control-stop.wav");
 
 /// How many of the microphone's last moments the pill's bars show.
 const MIC_BARS: usize = crate::pill::BARS;
@@ -678,7 +682,7 @@ impl Kotoba {
         }
     }
 
-    /// Control's key: start listening, with the light around the screen,
+    /// Control's key: start listening, with the frame round the screen,
     /// or stop and do what was said. It asks for both models, and for
     /// Accessibility, without which nothing can be done.
     pub fn toggle_control(&mut self, cx: &mut Context<Self>) {
@@ -703,7 +707,7 @@ impl Kotoba {
                 }
             }
             Dictation::Listening(rec) if self.controlling => {
-                let _ = crate::sys::play_sound(DICTATE_STOP);
+                let _ = crate::sys::play_sound(CONTROL_STOP);
                 self.carry_out(move || rec.finish(), cx);
             }
             other => self.dictation = other,
@@ -765,13 +769,14 @@ impl Kotoba {
             self.mic_levels.clear();
             crate::sys::take_escape(true);
             self.prepare_models(cx);
-            if self.pill.is_none() {
+            // Control shows the frame round the screen alone (`glow`).
+            if self.pill.is_none() && !self.controlling {
                 self.pill = crate::pill::open(cx);
             }
             // The chime first and the microphone once it has mostly rung,
             // so the chime is not in what it hears: counted from when it
             // began, a moment on when the Mac's sound has been quiet.
-            let chimed = crate::sys::play_sound(DICTATE_START);
+            let chimed = crate::sys::play_sound(if self.controlling { CONTROL_START } else { DICTATE_START });
             cx.notify();
             cx.spawn(async move |this, cx| {
                 let _ = chimed.await;
@@ -788,7 +793,9 @@ impl Kotoba {
                         Err(e) => {
                             this.dictation = Dictation::Off;
                             crate::sys::take_escape(false);
-                            this.control_over();
+                            if this.control_over() {
+                                this.pill = crate::pill::open(cx);
+                            }
                             this.pill_say(t("No microphone"), cx);
                             this.say_error(tf("The microphone did not start: {e}.", &[("e", &e)]), cx);
                         }
@@ -858,11 +865,14 @@ impl Kotoba {
         .detach();
     }
 
-    /// Control's listening over, and the light with it.
-    fn control_over(&mut self) {
-        if std::mem::take(&mut self.controlling) {
+    /// Control's listening over, and the frame with it. True when control
+    /// was on.
+    fn control_over(&mut self) -> bool {
+        let was = std::mem::take(&mut self.controlling);
+        if was {
             crate::glow::hide();
         }
+        was
     }
 
     /// What was heard (`heard`, off the main thread) written down, turned
@@ -888,17 +898,15 @@ impl Kotoba {
         self.control_job(move |stop| follow(&words, planner, &agent, stop), cx);
     }
 
-    /// The work of one thing said, off the main thread, Escape stopping it,
-    /// and how it ended, in the pill.
+    /// The work of one thing said, off the main thread, Escape stopping it.
+    /// The frame round the screen is all that shows while it works; the pill
+    /// comes down only to say how it ended, when there is something to say.
     fn control_job(&mut self, job: impl FnOnce(&dictate::Stop) -> Done + std::marker::Send + 'static, cx: &mut Context<Self>) {
         self.dictation = Dictation::Writing;
         crate::sys::take_escape(true);
         crate::glow::thinking();
         let stop = dictate::Stop::default();
         self.writing = Some(stop.clone());
-        if let Some(pill) = self.pill {
-            let _ = pill.update(cx, |pill, _, cx| pill.set_phase(crate::pill::Phase::Writing, cx));
-        }
         cx.notify();
         cx.spawn(async move |this, cx| {
             let running = stop.clone();
@@ -911,6 +919,9 @@ impl Kotoba {
                 this.dictation = Dictation::Off;
                 crate::sys::take_escape(false);
                 this.control_over();
+                if !matches!(done, Done::Done) && this.pill.is_none() {
+                    this.pill = crate::pill::open(cx);
+                }
                 match done {
                     Done::Silence => {
                         this.pill_say(t("No sound"), cx);
@@ -2052,7 +2063,6 @@ impl Kotoba {
                 let words = s["say:".len()..].replace('_', " ");
                 self.controlling = true;
                 crate::glow::show();
-                self.pill = crate::pill::open(cx);
                 self.carry_words(words, cx);
             }
             s if s.starts_with("group:") => {
@@ -2138,7 +2148,6 @@ impl Kotoba {
                 let path = std::path::PathBuf::from(&s["control:file:".len()..]);
                 self.controlling = true;
                 crate::glow::show();
-                self.pill = crate::pill::open(cx);
                 self.carry_out(
                     move || {
                         let bytes = std::fs::read(&path).unwrap_or_default();
