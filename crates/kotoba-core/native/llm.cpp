@@ -42,6 +42,24 @@ static void quiet(enum ggml_log_level level, const char * text, void *) {
     }
 }
 
+// The model's memory cleared, `start` read into it, and a copy of it
+// kept as `h->memory`, for every call that begins the same way. False
+// when the model failed.
+static bool read_start(kotoba_llm * h, const std::vector<llama_token> & start) {
+    llama_memory_clear(llama_get_memory(h->ctx), true);
+    h->start.clear();
+    std::vector<llama_token> reading = start;
+    if (llama_decode(h->ctx, llama_batch_get_one(reading.data(), (int) reading.size())) != 0) {
+        return false;
+    }
+    llama_synchronize(h->ctx);
+    h->memory.resize(llama_state_seq_get_size(h->ctx, 0));
+    if (llama_state_seq_get_data(h->ctx, h->memory.data(), h->memory.size(), 0) == h->memory.size()) {
+        h->start = start;
+    }
+    return true;
+}
+
 extern "C" {
 
 // A model from its GGUF file, every layer on the GPU, with room for
@@ -88,21 +106,10 @@ int kotoba_llm_complete(kotoba_llm * h, const char * prompt, int fixed, int max_
     if ((int) (start.size() + rest.size()) + max_new > (int) llama_n_ctx(h->ctx)) {
         return -2;
     }
-    llama_memory_t memory = llama_get_memory(h->ctx);
-    llama_memory_clear(memory, true);
+    llama_memory_clear(llama_get_memory(h->ctx), true);
     const bool kept = start == h->start && llama_state_seq_set_data(h->ctx, h->memory.data(), h->memory.size(), 0) == h->memory.size();
-    if (!kept) {
-        llama_memory_clear(memory, true);
-        h->start.clear();
-        std::vector<llama_token> reading = start;
-        if (llama_decode(h->ctx, llama_batch_get_one(reading.data(), (int) reading.size())) != 0) {
-            return -1;
-        }
-        llama_synchronize(h->ctx);
-        h->memory.resize(llama_state_seq_get_size(h->ctx, 0));
-        if (llama_state_seq_get_data(h->ctx, h->memory.data(), h->memory.size(), 0) == h->memory.size()) {
-            h->start = start;
-        }
+    if (!kept && !read_start(h, start)) {
+        return -1;
     }
     if (llama_decode(h->ctx, llama_batch_get_one(rest.data(), (int) rest.size())) != 0) {
         return -1;
@@ -128,6 +135,20 @@ int kotoba_llm_complete(kotoba_llm * h, const char * prompt, int fixed, int max_
     const int wrote = (int) said.size() < out_cap ? (int) said.size() : out_cap;
     memcpy(out, said.data(), wrote);
     return wrote;
+}
+
+// The first `fixed` bytes of `prompt` read ahead of a call that begins
+// with them, so that call goes on from them at once. Nothing is done when
+// they are what was read last. 0, or -1 when the model failed.
+int kotoba_llm_prepare(kotoba_llm * h, const char * prompt, int fixed) {
+    const std::vector<llama_token> start = tokens_of(h->vocab, prompt, fixed, true);
+    if (start.empty()) {
+        return -1;
+    }
+    if (start == h->start) {
+        return 0;
+    }
+    return read_start(h, start) ? 0 : -1;
 }
 
 void kotoba_llm_free(kotoba_llm * h) {

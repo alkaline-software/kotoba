@@ -29,7 +29,7 @@ The menu's icons are the window's Tabler SVGs, drawn by resvg (the copy gpui bui
 
 ## The settings window
 
-The window is 820 by 600, as every product's is, never narrower, and down to 460 tall, its title bar clear with the traffic lights over the rail, the rail of sections at the left (`SECTIONS`) and the section at the right, fading in as the section changes. The section's name stands in the window's top, level with the traffic lights, as the Mac's own settings have it; the top is the app's to drag by (`drag_region`, with `app_owns_titlebar_drag`), and the rail drags it too. Every section fits the window without scrolling, and the page still scrolls, under the top, for what a fold opens or what is added later. The rail runs General, then the app's two uses, Dictation and Control, then Models, which both use, then About.
+The window is 860 by 600, as every product's is, never narrower, and down to 460 tall, its title bar clear with the traffic lights over the rail, the rail of sections at the left (`SECTIONS`) and the section at the right, fading in as the section changes. The section's name stands in the window's top, level with the traffic lights, as the Mac's own settings have it; the top is the app's to drag by (`drag_region`, with `app_owns_titlebar_drag`), and the rail drags it too. Every section fits the window without scrolling, and the page still scrolls, under the top, for what a fold opens or what is added later. The rail runs General, then the app's two uses, Dictation and Control, then Models, which both use, then About.
 
 **Groups and rows.** A section is groups of rows on cards (`group`, `card`, `line`), drawn to `docs/design.md`, which has the sizes.
 

@@ -264,7 +264,7 @@ pub fn chosen(key: &str) -> Option<&'static Model> {
 
 /// Take the model off the disk, and out of memory.
 pub fn remove(m: &Model) -> Result<(), String> {
-    unload();
+    engine::let_go();
     let _ = fs::remove_file(path_of(m).with_extension("part"));
     match fs::remove_file(path_of(m)) {
         Ok(()) => Ok(()),
@@ -467,7 +467,7 @@ pub struct Microphone {
     pub name: String,
 }
 
-pub use engine::{microphones, release_idle, system_microphone, transcribe, unload, Recorder};
+pub use engine::{microphones, prepare, release_idle, system_microphone, transcribe, unload, Recorder};
 
 /// Elsewhere dictation has no microphone yet.
 
@@ -475,7 +475,7 @@ pub use engine::{microphones, release_idle, system_microphone, transcribe, unloa
 
 
 mod engine {
-    use std::sync::atomic::{AtomicU32, Ordering};
+    use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
     use std::sync::mpsc;
     use std::sync::{Arc, Mutex};
     use std::thread;
@@ -613,10 +613,21 @@ mod engine {
     /// next one starts.
     static RUN: Mutex<()> = Mutex::new(());
 
-    /// Let the model go now. Before the process exits, always: Metal's
+    /// Set by `unload`: no model is loaded after it. A model loaded ahead
+    /// (`prepare`) could otherwise begin after the quit let the models go.
+    static CLOSED: AtomicBool = AtomicBool::new(false);
+
+    /// Let the model go for good. Before the process exits, always: Metal's
     /// device is torn down at exit, and ggml aborts the process if a model
-    /// still holds its memory then.
+    /// still holds its memory then. Nothing loads after it.
     pub fn unload() {
+        CLOSED.store(true, Ordering::SeqCst);
+        let_go();
+    }
+
+    /// Let the model go now, to be loaded again when next used (a model
+    /// removed).
+    pub(crate) fn let_go() {
         let _run = RUN.lock().unwrap_or_else(|e| e.into_inner());
         *LOADED.lock().unwrap() = None;
     }
@@ -629,8 +640,18 @@ mod engine {
         }
     }
 
+    /// The model loaded ahead of `transcribe`: called as dictation starts
+    /// listening, so the words are written down as soon as it stops.
+    /// Blocking: a second or two the first time, nothing once it is done.
+    pub fn prepare(m: &Model) -> Result<(), String> {
+        loaded(m).map(drop)
+    }
+
     fn loaded(m: &Model) -> Result<transcribe_cpp::Model, String> {
         let mut g = LOADED.lock().unwrap();
+        if CLOSED.load(Ordering::SeqCst) {
+            return Err("Kotoba is quitting".into());
+        }
         if let Some((file, model, at)) = g.as_mut() {
             if file == m.file {
                 *at = Instant::now();

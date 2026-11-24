@@ -62,6 +62,8 @@ Each is marked `(Emaki addition.)` in the source, so a diff against the upstream
 
 31. `crates/ui/locales/ui.yml` (`Input`): Cut, Copy, Paste and Select All in Japanese, Korean, French, German and Spanish (Kotoba addition), the words of a field's menu, so it speaks the languages Kotoba's window does (`kotoba-app/src/i18n.rs`). Upstream has English and Chinese.
 
+32. `crates/ui/src/notification.rs`: the clock that moves the notifications along (`NotificationList::tick`, every 50 ms) runs while there is one and stops once none is left (Kotoba addition). Upstream starts it in `new` for the window's life: 20 wakeups a second in a window with no notification, about half of what the settings window cost while nothing moved.
+
 ## Updating
 
 Check out the new upstream revision, copy the four crates over these, re-apply the changes listed above, update the revision here, and build.

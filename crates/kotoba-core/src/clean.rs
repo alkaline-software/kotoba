@@ -77,7 +77,7 @@ pub fn chosen(key: &str) -> Option<&'static Model> {
 
 /// Take the model off the disk, and out of memory.
 pub fn remove(m: &Model) -> Result<(), String> {
-    unload();
+    engine::let_go();
     crate::dictate::remove(m)
 }
 
@@ -382,13 +382,14 @@ fn strip_marker(line: &str) -> &str {
     line
 }
 
-pub use engine::{release_idle, rewrite, tidy, unload};
-pub(crate) use engine::complete;
+pub use engine::{prepare, release_idle, rewrite, tidy, unload};
+pub(crate) use engine::{complete, prepare_for};
 
 
 
 mod engine {
     use std::ffi::{c_char, c_int, c_void, CString};
+    use std::sync::atomic::{AtomicBool, Ordering};
     use std::sync::Mutex;
     use std::time::{Duration, Instant};
 
@@ -398,6 +399,7 @@ mod engine {
     extern "C" {
         fn kotoba_llm_load(path: *const c_char, ctx_tokens: c_int) -> *mut c_void;
         fn kotoba_llm_complete(h: *mut c_void, prompt: *const c_char, fixed: c_int, max_new: c_int, out: *mut c_char, out_cap: c_int, stop: *const bool) -> c_int;
+        fn kotoba_llm_prepare(h: *mut c_void, prompt: *const c_char, fixed: c_int) -> c_int;
         fn kotoba_llm_free(h: *mut c_void);
     }
 
@@ -419,9 +421,20 @@ mod engine {
     /// model is.
     static LOADED: Mutex<Option<(String, Llm, Instant)>> = Mutex::new(None);
 
-    /// Let the model go now. Before the process exits, always, as the
-    /// speech model is (`dictate::unload`).
+    /// Set by `unload`: no model is loaded after it, as with the speech
+    /// model (`dictate::unload`).
+    static CLOSED: AtomicBool = AtomicBool::new(false);
+
+    /// Let the model go for good. Before the process exits, always, as the
+    /// speech model is (`dictate::unload`). Nothing loads after it.
     pub fn unload() {
+        CLOSED.store(true, Ordering::SeqCst);
+        let_go();
+    }
+
+    /// Let the model go now, to be loaded again when next used (a model
+    /// removed).
+    pub(crate) fn let_go() {
         *LOADED.lock().unwrap() = None;
     }
 
@@ -453,11 +466,33 @@ mod engine {
         complete(m, prompt(words, rules, terms), max_new, stop)
     }
 
-    /// What the model writes after a prompt in its chat form, up to
-    /// `max_new` tokens: the one model of the app, loaded if it is not, for
-    /// post-processing and for control alike.
-    pub(crate) fn complete(m: &Model, p: String, max_new: c_int, stop: &Stop) -> Result<String, String> {
+    /// The model loaded and the fixed start of post-processing's prompt
+    /// read, with the person's instructions and terms, ahead of the words:
+    /// called as dictation starts listening, so the words are cleaned up
+    /// as soon as they are written down. Blocking: a second or two the
+    /// first time, nothing once it is done.
+    pub fn prepare(m: &Model, rules: &str, terms: &[String]) -> Result<(), String> {
+        prepare_for(m, prompt("", rules, terms))
+    }
+
+    /// The model loaded and the start of a prompt like `p` read, for a
+    /// call with `p`'s start to go on from (`complete`).
+    pub(crate) fn prepare_for(m: &Model, p: String) -> Result<(), String> {
         let mut g = LOADED.lock().unwrap();
+        let llm = load(&mut g, m)?;
+        let fixed = fixed_part(&p);
+        let p = CString::new(p).map_err(|e| e.to_string())?;
+        if unsafe { kotoba_llm_prepare(llm.0, p.as_ptr(), fixed) } < 0 {
+            return Err("the clean-up model failed".into());
+        }
+        Ok(())
+    }
+
+    /// The model `m`, loaded into `g` unless it is there.
+    fn load<'a>(g: &'a mut Option<(String, Llm, Instant)>, m: &Model) -> Result<&'a Llm, String> {
+        if CLOSED.load(Ordering::SeqCst) {
+            return Err("Kotoba is quitting".into());
+        }
         if g.as_ref().is_none_or(|(file, _, _)| file != m.file) {
             *g = None;
             let path = CString::new(path_of(m).to_string_lossy().as_bytes()).map_err(|e| e.to_string())?;
@@ -469,10 +504,23 @@ mod engine {
         }
         let (_, llm, at) = g.as_mut().expect("loaded above");
         *at = Instant::now();
-        // All before the last turn stays the same from one dictation to
-        // the next, while the instructions and terms do. What was said
-        // cannot hold this mark (`prompt`).
-        let fixed = p.rfind("<|im_start|>user\n").unwrap_or(0) as c_int;
+        Ok(llm)
+    }
+
+    /// Where the part of a prompt that stays the same from one call to the
+    /// next ends: all before the last turn, while the instructions and
+    /// terms do. What was said cannot hold this mark (`prompt`).
+    fn fixed_part(p: &str) -> c_int {
+        p.rfind("<|im_start|>user\n").unwrap_or(0) as c_int
+    }
+
+    /// What the model writes after a prompt in its chat form, up to
+    /// `max_new` tokens: the one model of the app, loaded if it is not, for
+    /// post-processing and for control alike.
+    pub(crate) fn complete(m: &Model, p: String, max_new: c_int, stop: &Stop) -> Result<String, String> {
+        let mut g = LOADED.lock().unwrap();
+        let llm = load(&mut g, m)?;
+        let fixed = fixed_part(&p);
         let p = CString::new(p).map_err(|e| e.to_string())?;
         let mut out = vec![0u8; 64 * 1024];
         let n = unsafe { kotoba_llm_complete(llm.0, p.as_ptr(), fixed, max_new, out.as_mut_ptr() as *mut c_char, out.len() as c_int, stop.flag_ptr()) };

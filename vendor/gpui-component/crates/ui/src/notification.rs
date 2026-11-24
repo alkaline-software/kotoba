@@ -478,31 +478,46 @@ pub struct NotificationList {
     stacks: Vec<(Anchor, AnchorStack)>,
     focus_handle: FocusHandle,
     _subscriptions: HashMap<NotificationId, Subscription>,
+    /// Whether the clock that moves the notifications along is running.
+    /// (Kotoba addition.)
+    ticking: bool,
 }
 
 impl NotificationList {
-    pub fn new(window: &mut Window, cx: &mut Context<Self>) -> Self {
-        let view = cx.entity().downgrade();
-        cx.spawn_in(window, async move |_, cx| {
-            loop {
-                cx.background_executor()
-                    .timer(Duration::from_millis(50))
-                    .await;
-                if view
-                    .update_in(cx, |view, window, cx| view.advance(window, cx))
-                    .is_err()
-                {
-                    break;
-                }
-            }
-        })
-        .detach();
+    pub fn new(_window: &mut Window, cx: &mut Context<Self>) -> Self {
         Self {
             notifications: ToastManager::new(ToastMotion::sonner()),
             stacks: Vec::new(),
             focus_handle: cx.focus_handle().tab_stop(true),
             _subscriptions: HashMap::new(),
+            ticking: false,
         }
+    }
+
+    /// The clock that moves the notifications along, every 50 ms while
+    /// there is one, and stopped once none is left. (Kotoba addition:
+    /// upstream runs it from `new` for the window's life, 20 wakeups a
+    /// second in a window with no notification.)
+    fn tick(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        if std::mem::replace(&mut self.ticking, true) {
+            return;
+        }
+        cx.spawn_in(window, async move |view, cx| {
+            loop {
+                cx.background_executor()
+                    .timer(Duration::from_millis(50))
+                    .await;
+                let more = view.update_in(cx, |view, window, cx| {
+                    view.advance(window, cx);
+                    view.ticking = !view.notifications.is_empty();
+                    view.ticking
+                });
+                if !matches!(more, Ok(true)) {
+                    break;
+                }
+            }
+        })
+        .detach();
     }
 
     fn is_expanded(&self) -> bool {
@@ -561,7 +576,7 @@ impl NotificationList {
     pub fn push(
         &mut self,
         notification: impl Into<Notification>,
-        _window: &mut Window,
+        window: &mut Window,
         cx: &mut Context<Self>,
     ) {
         let notification = notification.into();
@@ -593,6 +608,7 @@ impl NotificationList {
             },
             cx.background_executor().now(),
         );
+        self.tick(window, cx);
         cx.notify();
     }
 

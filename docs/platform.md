@@ -27,7 +27,7 @@ Building needs CMake (`brew install cmake`) for transcribe.cpp, and the Intel ta
 
 ## Self-update
 
-`update.rs`: the newest version is the tag `releases/latest` redirects to, the disk image for the Mac's chip is fetched under its stable asset name, mounted, `Kotoba.app` copied beside the running bundle and swapped in, and the new app opened once this one has gone. `Kotoba::run_check` and `install_update_now` run it on threads; the daily check runs from the app's one-minute clock when `app.check_updates` is on, and a newer version found puts a dot on the rail's About, where the updates are.
+`update.rs`: the newest version is the tag `releases/latest` redirects to, the disk image for the Mac's chip is fetched under its stable asset name, mounted, `Kotoba.app` copied beside the running bundle and swapped in, and the new app opened once this one has gone. The disk image is deleted once the install is over, whether it worked or not: each try fetches its own. `Kotoba::run_check` and `install_update_now` run it on threads; the daily check runs from the app's one-minute clock when `app.check_updates` is on, and a newer version found puts a dot on the rail's About, where the updates are.
 
 ## The bundles
 

@@ -55,6 +55,7 @@ Each is here because breaking it lost data or brought back a fixed bug. The doc 
 | `vendor/`, `Cargo.toml`, `.github/workflows/`, scripts, `update.rs`, `config.rs`, `paths.rs` | `docs/platform.md` |
 | `kotoba-core/src/control.rs`; `act.rs`, `agent.rs`, `glow.rs`; control in `kotoba.rs` | `docs/control.md` |
 | Checking a change in the window from a script | `docs/probing.md` |
+| Making Kotoba faster or lighter: a pass of optimization, its rules, its log | `docs/optimize.md` |
 | Cutting a release | `docs/release.md` |
 
 Emaki's own docs (`../emaki/docs/composer.md`, `window.md`, `look.md`) hold the longer history of the parts that came from there.
@@ -93,7 +94,7 @@ crates/kotoba-app/         the window
 vendor/gpui-component/     the vendored toolkit, with its UPSTREAM.md
 vendor/llama.cpp/          libllama's sources, with its UPSTREAM.md
 scripts/                   dev-app.sh, relaunch.sh, make-icon.sh, make-readme-gif.sh and readme/, release-*.sh, dictate-sounds.py
-docs/                      how each part works and its traps; release.md, how to cut a release; probing.md
+docs/                      how each part works and its traps; release.md, how to cut a release; probing.md; optimize.md, the optimization passes and their log
 CHANGELOG.md               one section per release; the release job reads it
 ```
 
@@ -112,7 +113,7 @@ A release ends with nothing compiled left: `scripts/release-clean.sh` deletes `t
 
 ## Writing things down
 
-- Each document has one job. This file: what Kotoba is, the rules every session follows, where to read next. `docs/<part>.md`: how one part works and why, with its traps. `docs/release.md`: how to cut a release. `CHANGELOG.md`: what each release changed for the person installing it. `docs/probing.md`: how to look at the window from a script. `README.md`: a short introduction for GitHub. Nothing else is kept as a file: a plan or a list of tasks goes stale within weeks.
+- Each document has one job. This file: what Kotoba is, the rules every session follows, where to read next. `docs/<part>.md`: how one part works and why, with its traps. `docs/release.md`: how to cut a release. `CHANGELOG.md`: what each release changed for the person installing it. `docs/probing.md`: how to look at the window from a script. `docs/optimize.md`: how Kotoba is kept fast and light, with the log of every optimization pass. `README.md`: a short introduction for GitHub. Nothing else is kept as a file: a plan or a list of tasks goes stale within weeks.
 - How a part works, a trap, or a fact learned about gpui or macOS goes in that part's file under `docs/`, in its `## Rules` when it must not be broken. This file gets a line only for a rule every session must follow, or a new row in the table above.
 - Write what is so now and why. What was checked and how belongs in the reply to the person, not in a doc.
 - Plain words, short declarative sentences, the reason after the rule. No hard wraps in Markdown: a paragraph or a list item is one line. American spelling. No em dashes. Name the place, not a line number.

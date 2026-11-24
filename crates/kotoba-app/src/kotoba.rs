@@ -26,7 +26,7 @@ use crate::i18n::{t, tf};
 use crate::widgets::{binding_signs, dictate_key_signs, MENU_OUT};
 
 /// The settings window's size, and the least it is dragged to.
-pub const SETTINGS_W: Pixels = px(820.);
+pub const SETTINGS_W: Pixels = px(860.);
 pub const SETTINGS_H: Pixels = px(600.);
 const SETTINGS_MIN: Size<Pixels> = Size { width: SETTINGS_W, height: px(460.) };
 
@@ -764,6 +764,7 @@ impl Kotoba {
             self.dictation = Dictation::Starting;
             self.mic_levels.clear();
             crate::sys::take_escape(true);
+            self.prepare_models(cx);
             if self.pill.is_none() {
                 self.pill = crate::pill::open(cx);
             }
@@ -797,6 +798,32 @@ impl Kotoba {
             })
             .detach();
         }
+    }
+
+    /// The models a dictation or control will use loaded, and the fixed
+    /// start of the language model's prompt read, while the person speaks,
+    /// off the main thread: done after the key's second press, the first
+    /// dictation after launch or a while unused waited for them. Each
+    /// call returns at once when it is already done.
+    fn prepare_models(&self, cx: &mut Context<Self>) {
+        let app = &self.cfg.app;
+        let speech = dictate::chosen(&app.dictate_model);
+        let language = kotoba_core::clean::chosen(&app.clean_model).filter(|_| self.controlling || app.clean_on);
+        let (controlling, rules, terms) = (self.controlling, app.clean_prompt.clone(), app.dictate_terms.clone());
+        cx.background_spawn(async move {
+            if let Some(m) = speech {
+                if let Err(e) = dictate::prepare(m) {
+                    eprintln!("kotoba: the speech model, ahead: {e}");
+                }
+            }
+            if let Some(m) = language {
+                let done = if controlling { kotoba_core::control::prepare(m) } else { kotoba_core::clean::prepare(m, &rules, &terms) };
+                if let Err(e) = done {
+                    eprintln!("kotoba: the language model, ahead: {e}");
+                }
+            }
+        })
+        .detach();
     }
 
     /// The pill drawn again while it listens, for the loudness.

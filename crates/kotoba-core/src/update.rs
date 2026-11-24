@@ -182,9 +182,13 @@ pub fn download(version: &str, progress: &dyn Fn(u64, Option<u64>)) -> Result<Pa
 }
 
 /// Put the fetched disk image's app in place and start it once this one
-/// has gone. On success the caller quits.
+/// has gone. On success the caller quits. The disk image goes either way:
+/// a later try fetches its own, and kept it was 11 MB left in the cache
+/// for good.
 pub fn install(dmg: &Path) -> Result<(), String> {
-    install_into(dmg, None)
+    let done = install_into(dmg, None);
+    let _ = std::fs::remove_file(dmg);
+    done
 }
 
 /// The `.app` the running binary lives in, if it is in one.

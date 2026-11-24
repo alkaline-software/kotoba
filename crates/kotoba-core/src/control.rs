@@ -311,6 +311,13 @@ pub fn prompt(words: &str, front: &str) -> String {
     p
 }
 
+/// The model loaded and the fixed start of control's prompt read ahead of
+/// what is said: called as control starts listening, so the steps are
+/// written as soon as the words are.
+pub fn prepare(m: &Model) -> Result<(), String> {
+    clean::prepare_for(m, prompt("", ""))
+}
+
 /// What the model writes for what was said, as it writes it.
 pub fn write(m: &Model, words: &str, front: &str, stop: &Stop) -> Result<String, String> {
     // Room for a long sentence to type, in a few steps.
