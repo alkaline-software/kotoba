@@ -66,6 +66,32 @@ extern "C" {
     fn CACurrentMediaTime() -> f64;
 }
 
+/// Core Animation's `CAFrameRateRange`: the frames a second an animation
+/// asks for.
+#[repr(C)]
+#[derive(Clone, Copy)]
+struct FrameRate {
+    minimum: f32,
+    maximum: f32,
+    preferred: f32,
+}
+
+unsafe impl objc2::Encode for FrameRate {
+    const ENCODING: objc2::Encoding = objc2::Encoding::Struct("CAFrameRateRange", &[f32::ENCODING, f32::ENCODING, f32::ENCODING]);
+}
+
+/// How an animation runs: eased in and held at its end (`In`), even and
+/// over and over at the screen's rate (`Round`), or the same at 15
+/// frames a second (`Drift`), for a motion so slow that a frame more is
+/// not seen. Anything moving in the frame's window has WindowServer draw
+/// at the screen's rate, a quarter of a core on a 5K screen at 60 Hz.
+#[derive(PartialEq)]
+enum Pace {
+    In,
+    Round,
+    Drift,
+}
+
 struct Glow {
     window: Retained<NSPanel>,
     /// The band's layers and the marks, each on the same outline, with how
@@ -305,10 +331,9 @@ fn wheel(size: NSSize, lightness: f64) -> Retained<AnyObject> {
     wheel
 }
 
-/// An animation of `key` on `target` from `from` to `to`: begun at `begin`
-/// (media time), over `seconds`, eased in or even, held at its end, or
-/// over and over.
-fn animate(target: &AnyObject, key: &str, name: &str, (from, to): (f64, f64), begin: f64, seconds: f64, ease_in: bool, repeat: bool) {
+/// An animation of `key` on `target` from `from` to `to`, begun at `begin`
+/// (media time), over `seconds`, at `pace`.
+fn animate(target: &AnyObject, key: &str, name: &str, (from, to): (f64, f64), begin: f64, seconds: f64, pace: Pace) {
     let class = AnyClass::get(c"CABasicAnimation").expect("QuartzCore");
     unsafe {
         let path = NSString::from_str(key);
@@ -318,17 +343,18 @@ fn animate(target: &AnyObject, key: &str, name: &str, (from, to): (f64, f64), be
         let _: () = msg_send![&*a, setToValue: &*to];
         let _: () = msg_send![&*a, setBeginTime: begin];
         let _: () = msg_send![&*a, setDuration: seconds];
-        if ease_in {
+        if pace == Pace::In {
             let curve = AnyClass::get(c"CAMediaTimingFunction").expect("QuartzCore");
             let name = NSString::from_str("easeIn");
             let ease_in: Retained<AnyObject> = msg_send![curve, functionWithName: &*name];
             let _: () = msg_send![&*a, setTimingFunction: &*ease_in];
-        }
-        if repeat {
-            let _: () = msg_send![&*a, setRepeatCount: f32::INFINITY];
-        } else {
             let forwards = NSString::from_str("forwards");
             let _: () = msg_send![&*a, setFillMode: &*forwards];
+        } else {
+            let _: () = msg_send![&*a, setRepeatCount: f32::INFINITY];
+        }
+        if pace == Pace::Drift {
+            let _: () = msg_send![&*a, setPreferredFrameRateRange: FrameRate { minimum: 10., maximum: 15., preferred: 15. }];
         }
         let _: () = msg_send![&*a, setRemovedOnCompletion: false];
         let name = NSString::from_str(name);
@@ -410,7 +436,7 @@ pub fn show() {
     // The colors turn, clockwise as seen, the way the marks slide.
     if !calm() {
         let turn = (0., -std::f64::consts::TAU);
-        animate(&wheel, "transform.rotation.z", "turn", turn, unsafe { CACurrentMediaTime() }, 360. / HUE_TURN, false, true);
+        animate(&wheel, "transform.rotation.z", "turn", turn, unsafe { CACurrentMediaTime() }, 360. / HUE_TURN, Pace::Drift);
     }
     let glow = Glow { window, marks, spin, round: outline.round(), sliding: false };
     together(0., || reach(&glow, 0.));
@@ -452,17 +478,17 @@ pub fn thinking() {
     for (m, k) in &glow.marks {
         let half = ARM_WORK * k / (2. * glow.round);
         for (key, at) in [("strokeStart", 0.25 - half), ("strokeEnd", 0.25 + half)] {
-            animate(m, key, &format!("{key}.in"), (at, at + ease), now, SPEED_UP, true, false);
+            animate(m, key, &format!("{key}.in"), (at, at + ease), now, SPEED_UP, Pace::In);
             // Then round and round: a round on is the same place, so
             // starting again is not seen.
-            animate(m, key, &format!("{key}.turn"), (at + ease, at + ease + 0.5), now + SPEED_UP, round_s, false, true);
+            animate(m, key, &format!("{key}.turn"), (at + ease, at + ease + 0.5), now + SPEED_UP, round_s, Pace::Round);
         }
     }
     // The colors turn faster, coming up to speed with the marks.
     let (fast, tau) = (HUE_WORK.to_radians(), std::f64::consts::TAU);
     let first = fast * SPEED_UP / 1.724;
-    animate(&glow.spin, "transform.rotation.z", "in", (0., -first), now, SPEED_UP, true, false);
-    animate(&glow.spin, "transform.rotation.z", "turn", (-first, -first - tau), now + SPEED_UP, tau / fast, false, true);
+    animate(&glow.spin, "transform.rotation.z", "in", (0., -first), now, SPEED_UP, Pace::In);
+    animate(&glow.spin, "transform.rotation.z", "turn", (-first, -first - tau), now + SPEED_UP, tau / fast, Pace::Round);
 }
 
 /// Each mark draws back to its middle, wherever it is, and the window goes

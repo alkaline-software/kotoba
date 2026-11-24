@@ -12,7 +12,7 @@ About keeping Kotoba fast and light: the three aims of a pass, how one is done, 
 - **Nothing slow is asked while a frame is built.** A hover draws the window whole, so what `render` and each row call runs at every hover: what the system has is found once, at launch (`fonts::install`, `docs/look.md`), and a list that grows with use draws what is near its box (the history's `said_in_view`, `docs/window.md`). A row's call runs once a row a frame; count what a row asks, not only what the view asks once.
 - **A model is loaded while the person speaks, and held only while it is used.** The key's first press starts the loading (`prepare_models`), so the time it takes is spent while the person talks and not after the second press. The two models together hold 2.8 GB; each is let go after ten minutes unused (`IDLE_MODEL`), off the main thread. Nothing loads after the quit's `unload`, so a load begun ahead never outlasts it (`docs/dictation.md`).
 - **What is the same each time is worked out once.** The start of post-processing's prompt is read once and kept while it is unchanged (`kotoba_llm_complete`, `docs/dictation.md`): it was three quarters of a short dictation's time. Time a model with `llama_synchronize`, since `llama_decode` returns before the GPU is done.
-- **What moves on its own is the system's to draw.** Control's frame is Core Animation's (`glow.rs`), drawn at the screen's rate with no frame of ours, which the model would wait behind.
+- **What moves on its own is the system's to draw, at the rate it needs.** Control's frame is Core Animation's (`glow.rs`), drawn with no frame of ours, which the model would wait behind. Whatever moves in a window has WindowServer draw at the screen's rate, about a quarter of a core on a 5K screen at 60 Hz, however small the window and whatever moves; a motion too slow for a frame more to be seen asks for fewer (`Pace::Drift`, `preferredFrameRateRange`). Time a change on screen in WindowServer's CPU (`ps -o time= -p <WindowServer>`), not only in Kotoba's.
 
 ## A pass
 
@@ -29,7 +29,28 @@ About keeping Kotoba fast and light: the three aims of a pass, how one is done, 
 
 Newest first. Each entry: the version and date, the commits covered (`<last entry's commit or tag>..` the commit that adds the entry), what was looked at, what was found and done with the numbers before and after in a table, what was looked at and left as it is and why, and what was left for later.
 
-### v0.1.6, 2026-11-24
+### v0.1.6, 2026-11-24, second pass
+
+`8354b00..` the commit that adds this entry: control's frame and sound redesigned, and the settings' presses that move nothing (rows of one height, `same_room`, notices in the top bar). A release build of `b561c35` against a release build of this pass, each run as a probe copy with its own home, the settings window open. The frame timed over 20 s spans in WindowServer's CPU and Kotoba's, with the frame off, at rest (listening, no voice) and working, on a 5K Studio Display at 60 Hz; each span's cost is what it adds over the frame off. The other apps of the Mac were running, so WindowServer's baseline moved between 2.4 and 3.8 s.
+
+| | Before | This pass |
+|---|---|---|
+| Control's frame at rest, WindowServer's CPU over 20 s above the frame off | 5.5 to 6.1 s (27 to 30% of a core) | 2.5 to 2.6 s (12 to 13%) |
+| The frame working, the same (unchanged by this pass; the spread is the other apps') | 5.1 to 5.9 s | 6.1 to 6.3 s |
+| Kotoba's own CPU with the frame shown, over 20 s | 0.1 to 0.2 s | 0.1 to 0.2 s |
+
+Found and fixed:
+- The colors' slow turn while control listens (12 degrees a second) was drawn at the screen's rate, and with it WindowServer at 60 frames a second the whole time the frame was up. It now asks for 15 (`Pace::Drift`). Two pictures 5 s apart show the same turn. Asking for up to 20 saved less (2.2 to 3.0 s), and the cost does not fall in step with the rate, so fewer than 15 would save little more.
+
+Looked at and left as they are:
+- The frame working costs WindowServer about 30% of a core. The marks slide 260 points a second and need every frame: at 30 a mark jumps 9 points a frame. The cost is WindowServer drawing at the screen's rate whatever moves: a window 40 points tall cost the same as one the size of the screen, the marks alone without the band the same (7.8 s against 8.1), and the wheel of colors drawn at an eighth of its resolution the same.
+- `glow::level`, each 80 ms while control listens, on the main thread: 1.4 ms (2.2 at the 90th percentile) for the 36 layers' stroke ends, 1.7% of the thread. The time is Core Animation's commit of 72 implicit animations; setting them without key-value coding was no faster. A key pressed meanwhile waits at most 2.5 ms.
+- The settings at rest, after the changes to presses: 0.17 to 0.20 s of CPU over 45 s with the window open and nothing moving (0.4% of a core), and with it closed none, no idle wakeups and 18 MB, as at the last pass. `presence` sets one timer as something closes and none while it is open; `same_room` lays out both words and animates nothing at rest.
+- Control's two sounds are 70 KB each, carried in the program and played as dictation's are.
+
+Left for later: nothing.
+
+### v0.1.6, 2026-11-24, first pass
 
 The first pass, over everything: from the repository's start to the commit that adds this entry. A release build of `c8c40ed` against a release build of this pass, each run as a probe copy with its own home and the models of this Mac linked in (Qwen3-ASR 1.7B, Qwen3.5 4B with post-processing on, the person's own instructions and 12 terms). Dictation's stages timed from a throwaway example over the core on a WAV of 9.8 s, one sentence.
 
