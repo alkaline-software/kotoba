@@ -1,5 +1,14 @@
 # Changelog
 
+## v0.1.6
+
+1. **Control your Mac by voice.** A second shortcut, ⌥⌘K unless you choose another, turns a sentence in any language into steps Kotoba carries out on your Mac: opening apps and pages, pressing keys, clicking what you name. Escape stops it.
+2. **Your own agent for the screen.** What needs the screen read can go to your Claude Code or Codex, if you turn one on in Control. It is off unless you choose one; without it, nothing you say leaves your Mac.
+3. **A frame while it works.** Dark marks at the screen's corners, over slowly turning bands of color, show that control is listening and working, with a sound of its own as it starts and stops.
+4. **A Dictation section.** The shortcut, the microphone and the history moved out of General into a section of their own, with Customize folded in and Terms and Avoid side by side.
+5. **A quicker first dictation.** The models load while you speak, so the first dictation after launch or a long pause writes in about a second instead of three.
+6. **Nothing moves when you press.** Buttons keep their place as their words change, rows keep one height, notices show in the window's top bar, and Updates answers on its own button.
+
 ## v0.1.5
 
 1. **Escape while it writes.** Esc now stops a dictation after you finish speaking too, up to the moment the words appear: nothing is pasted or kept in the history.
