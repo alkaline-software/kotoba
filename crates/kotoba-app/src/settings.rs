@@ -19,7 +19,7 @@ use kotoba_core::{dictate, update};
 use crate::kotoba::{Dictate, Escape, Inner, Kotoba, Lane, PickFor, WordList, KEY_CONTEXT, SECTIONS, Control, Trigger};
 use crate::i18n::{count, t, tf};
 use crate::sys::{Login, Mic};
-use crate::widgets::{choice_pill, dictate_key_signs, float_shadow, key_combo, key_text, key_text_wrap, page_in, said_day, small_pill, swallow_click, tip, Press, FOLD_ANIM, MENU_IN, MENU_OUT};
+use crate::widgets::{choice_pill, dictate_key_signs, float_shadow, key_combo, key_text, page_in, said_day, same_room, small_pill, swallow_click, tip, tip_wrap, Press, FOLD_ANIM, MENU_IN, MENU_OUT};
 
 /// The rail's width, and the page's margin at either side.
 const RAIL_W: Pixels = px(190.);
@@ -30,14 +30,21 @@ const CONTROL_W: Pixels = px(336.);
 /// The key's field and the history's list, and the key's More and Reset.
 const FIELD_W: Pixels = px(160.);
 const DICTATE_PILL_W: Pixels = px(80.);
-/// A permission's state or button, and the update's button.
-const PERMIT_W: Pixels = px(150.);
-const UPDATE_W: Pixels = px(190.);
+/// A permission's state or button, and the update's button. Each is
+/// one width in every state and every language, measured with the text
+/// system over every word it can show (`docs/design.md`, A press moves
+/// nothing): a button that took the width of its new words moved its
+/// edge at the press.
+const PERMIT_W: Pixels = px(168.);
+const UPDATE_W: Pixels = px(212.);
+/// Copy All on a list's sheet, which says Copied a moment after.
+const COPY_W: Pixels = px(134.);
 /// The language's list at General's top right.
 const LANGUAGE_W: Pixels = px(136.);
 /// The two slots at a model's right, one width, so every button down a
-/// lane is one size and stands in one column.
-const MODEL_SLOT_W: Pixels = px(96.);
+/// lane is one size and stands in one column, and holds its longest word
+/// in every language (Download in Japanese and French).
+const MODEL_SLOT_W: Pixels = px(110.);
 /// The preferences' field: this tall, or in a short window what room
 /// is left above it (the window's top, the field's name) and below it
 /// (dictation's card above, the words' row below, the page's foot), and
@@ -51,6 +58,10 @@ const TOP_H: Pixels = px(52.);
 /// How far past the history's box its rows are drawn, each way, so a fast
 /// scroll shows none missing.
 const SAID_OVER: f32 = 600.;
+/// The room under a list that scrolls to a sheet's foot: a sheet is
+/// rounded 18, and a row's ground cut at the very foot stood square
+/// past the curve.
+const SHEET_FOOT: f32 = 8.;
 
 impl Render for Kotoba {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
@@ -59,7 +70,6 @@ impl Render for Kotoba {
         // handle the last draw did not use goes.
         self.inner_live.borrow_mut().clear();
         self.inner_kept.borrow_mut().retain(|_, kept| std::mem::take(&mut kept.1));
-        self.settings_glide_step(window);
         let theme = cx.theme().clone();
         div()
             .id("kotoba")
@@ -142,7 +152,6 @@ impl Kotoba {
         let theme = cx.theme().clone();
         let app = self.cfg.app.clone();
 
-        let link_color = theme.muted_foreground;
         let link_hover = theme.primary;
         let said = |t: &'static str| Some(div().child(t).into_any_element());
 
@@ -161,13 +170,15 @@ impl Kotoba {
                 };
                 let appearance = div().w(CONTROL_W).child(self.segmented("appearance", vec![("system", t("System").into()), ("light", t("Light").into()), ("dark", t("Dark").into())], appearance_key, Rc::new(|this, key, window, cx| this.set_appearance(key, window, cx)), cx)).into_any_element();
                 // Opening at login is the system's to keep: while it waits
-                // on the person in Login Items, the way there stands
-                // before the switch.
+                // on the person in Login Items, the way there stands in
+                // the room before the switch, and what to do there is its
+                // tooltip. A line under the row's name grew the card at
+                // the press.
                 let waiting = self.login == Login::Waiting;
                 let login = h_flex()
                     .gap(px(10.))
                     .items_center()
-                    .when(waiting, |d| d.child(small_pill("login-items", "icons/external-link.svg", t("Login Items"), Press::Quiet, false, &theme).h(px(28.)).on_click(|_, _, _| crate::sys::open_login_items())))
+                    .when(waiting, |d| d.child(small_pill("login-items", "icons/external-link.svg", t("Login Items"), Press::Quiet, false, &theme).h(px(28.)).managed_tooltip(|window, cx| tip(t("Allow Kotoba in Login Items."), window, cx)).on_click(|_, _, _| crate::sys::open_login_items())))
                     .child(self.switch("login", self.login != Login::Off, Rc::new(|this, on, _, cx| this.set_login(on, cx)), cx))
                     .into_any_element();
                 let shown = self.switch("bar-icon", app.bar_icon, Rc::new(|this, on, _, cx| this.set_bar_icon(on, cx)), cx);
@@ -201,75 +212,84 @@ impl Kotoba {
                         .into_any_element(),
                 };
                 let permit = |el: AnyElement| div().w(PERMIT_W).child(el).into_any_element();
-                let mic_line = if self.mic == Mic::Refused { t("Turn it on in System Settings.") } else { t("To hear you.") };
+                // Both of the microphone's lines in one room, so its row
+                // is one height whatever the system answers.
+                let refused = self.mic == Mic::Refused;
+                let mic_line = same_room("mic-line", div().child(t("To hear you.")).into_any_element(), div().child(t("Turn it on in System Settings.")).into_any_element(), refused, self.presence("mic-line", refused, cx)).into_any_element();
                 vec![
                     group(
                         Some(t("App")),
                         None,
                         vec![
                             line(t("Theme"), None, appearance, &theme),
-                            line(t("Launch at login"), waiting.then(|| div().child(t("Allow Kotoba in Login Items.")).into_any_element()), login, &theme),
+                            line(t("Launch at login"), None, login, &theme),
                             line(t("Show in menu bar"), said(t("When hidden, open Kotoba again to come back here.")), shown, &theme),
                             line(t("Swap clicks"), said(t("Left click shows the menu, right click opens settings.")), swap, &theme),
                         ],
                         &theme,
                     ),
-                    group(Some(t("Permissions")), None, vec![line(t("Microphone"), said(mic_line), permit(mic), &theme), line(t("Accessibility"), said(t("For the shortcut and paste.")), permit(ax), &theme)], &theme),
+                    group(Some(t("Permissions")), None, vec![line(t("Microphone"), Some(mic_line), permit(mic), &theme), line(t("Accessibility"), said(t("For the shortcut and paste.")), permit(ax), &theme)], &theme),
                 ]
             }
             // About, as in every product of the studio's: the title card,
             // the pills, then the updates.
             "about" => {
                 let current = update::current_version();
-                // Under the credits, the updates, as little as possible:
-                // what a check found, and one button that is "Check for
-                // updates" until a check finds something and "Update to
-                // x" after, in the same place, with "Release notes" under
-                // the row's name then.
+                // Under the credits, the updates: every state of the check
+                // is the button's own words, in one width, and a failure's
+                // reason is its tooltip. A line under the row's name grew
+                // the card at the press. Once a newer Kotoba is found, its
+                // notes stand in the room before the button.
                 let u = &self.update;
-                let update_line = if u.installing {
+                let (icon, words, kind, busy): (&'static str, String, Press, bool) = if u.installing {
                     match u.progress {
-                        Some((done, Some(total))) if total > 0 => tf("Downloading… {p}%", &[("p", &(done * 100 / total))]),
-                        Some(_) => t("Downloading…").to_string(),
-                        None => t("Installing… Kotoba restarts by itself.").to_string(),
+                        Some((done, Some(total))) if total > 0 => ("icons/download.svg", tf("Downloading… {p}%", &[("p", &(done * 100 / total))]), Press::Primary, true),
+                        Some(_) => ("icons/download.svg", t("Downloading…").to_string(), Press::Primary, true),
+                        None => ("icons/download.svg", t("Installing…").to_string(), Press::Primary, true),
                     }
-                } else if !u.install_error.is_empty() {
-                    tf("The update did not go through: {e}", &[("e", &u.install_error)])
+                } else if u.checking {
+                    ("icons/redo-2.svg", t("Checking…").to_string(), Press::Quiet, true)
+                } else if let Some(v) = u.available.as_deref() {
+                    if u.install_error.is_empty() {
+                        ("icons/download.svg", tf("Update to {v}", &[("v", &v)]), Press::Primary, false)
+                    } else {
+                        ("icons/triangle-alert.svg", t("Update failed").to_string(), Press::Primary, false)
+                    }
                 } else if !u.error.is_empty() {
-                    t("Could not reach GitHub.").to_string()
-                } else if u.available.is_none() && u.answered && !u.automatic {
-                    t("Up to date.").to_string()
+                    ("icons/triangle-alert.svg", t("Check failed").to_string(), Press::Quiet, false)
+                } else if u.answered && !u.automatic {
+                    ("icons/check.svg", t("Up to date").to_string(), Press::Quiet, false)
                 } else {
-                    String::new()
+                    ("icons/redo-2.svg", t("Check for updates").to_string(), Press::Quiet, false)
                 };
-                let can_install = u.available.is_some() && !u.installing;
-                let (checking, installing) = (u.checking, u.installing);
+                let reason: Option<SharedString> = if u.installing {
+                    u.progress.is_none().then(|| t("Installing… Kotoba restarts by itself.").into())
+                } else if u.checking {
+                    None
+                } else if u.available.is_some() && !u.install_error.is_empty() {
+                    Some(tf("The update did not go through: {e}", &[("e", &u.install_error)]).into())
+                } else if u.available.is_none() && !u.error.is_empty() {
+                    Some(t("Could not reach GitHub.").into())
+                } else {
+                    None
+                };
+                let install = u.available.is_some();
                 let notes_url = u.available.as_deref().map(update::release_page);
-                let press = |id: &'static str, label: SharedString, kind: Press, off: bool| small_pill(id, "icons/redo-2.svg", label, kind, off, &theme).h(px(28.)).w(UPDATE_W).justify_center();
-                let button = if can_install {
-                    press("update-now", tf("Update to {v}", &[("v", &u.available.as_deref().unwrap_or(""))]).into(), Press::Primary, false).on_click(cx.listener(|this, _, _, cx| this.install_update_now(cx))).into_any_element()
-                } else if installing {
-                    press("update-busy", t("Updating…").into(), Press::Quiet, true).into_any_element()
-                } else {
-                    press("update-check", if checking { t("Checking…") } else { t("Check for updates") }.into(), Press::Quiet, checking).on_click(cx.listener(|this, _, _, cx| this.check_updates_now(cx))).into_any_element()
-                };
-                let found = (!update_line.is_empty()).then(|| div().child(update_line));
-                let update_note = (found.is_some() || notes_url.is_some()).then(|| v_flex().gap(px(1.)).children(found).when_some(notes_url, |d, url| {
-                    d.child(
-                        div()
-                            .id("update-notes")
-                            .self_start()
-                            .cursor_pointer()
-                            .text_color(link_color)
-                            .text_decoration_1()
-                            .text_decoration_color(link_color.opacity(0.6))
-                            .hover(move |s| s.text_color(link_hover).text_decoration_color(link_hover))
-                            .on_click(move |_, _, cx| cx.open_url(&url))
-                            .child(t("Release notes")),
-                    )
-                }));
+                let button = small_pill("update", icon, words, kind, busy, &theme)
+                    .h(px(28.))
+                    .w(UPDATE_W)
+                    .justify_center()
+                    .when_some(reason, |d, why| d.managed_tooltip(move |window, cx| tip_wrap(why.clone(), window, cx)))
+                    .when(!busy, |d| d.on_click(cx.listener(move |this, _, _, cx| if install { this.install_update_now(cx) } else { this.check_updates_now(cx) })));
+                let notes = notes_url.map(|url| small_pill("update-notes", "icons/file-text.svg", t("Release notes"), Press::Quiet, false, &theme).h(px(28.)).on_click(move |_, _, cx| cx.open_url(&url)));
+                let notes_moving = self.presence("update-notes", notes.is_some(), cx);
+                let notes = notes.map(|n| match notes_moving {
+                    Some((_, k)) => n.with_animation(ElementId::Name(format!("update-notes-{k}").into()), Animation::new(FOLD_ANIM).with_easing(ease_out_quint()), |d, t| d.opacity(t)).into_any_element(),
+                    None => n.into_any_element(),
+                });
+                let button = h_flex().gap(px(8.)).items_center().children(notes).child(button).into_any_element();
                 let auto_check = self.switch("update-auto", app.check_updates, Rc::new(|this, on, _, cx| this.set_check_updates(on, cx)), cx);
-                let updates = group(None, None, vec![line(t("Updates"), update_note.map(|n| n.into_any_element()), button, &theme), line(t("Check automatically"), None, auto_check, &theme)], &theme);
+                let updates = group(None, None, vec![line(t("Updates"), None, button, &theme), line(t("Check automatically"), None, auto_check, &theme)], &theme);
                 let link = |id: &'static str, name: &'static str, url: &'static str| {
                     div()
                         .id(id)
@@ -374,9 +394,11 @@ impl Kotoba {
                         },
                         div().text_size(px(15.)).font_weight(FontWeight::SEMIBOLD).child(title),
                     ))
-                    // General's top right: the window's language.
-                    .child(div().flex_1())
-                    .when(section == "general", |d| d.child(language)))
+                    // A notice in the top's empty room, then, on General,
+                    // the window's language at its right.
+                    .child(div().flex_1().min_w(px(16.)))
+                    .children(notice)
+                    .when(section == "general", |d| d.child(div().w(px(12.)).flex_shrink_0()).child(language)))
                     .child(
                         v_flex()
                             .relative()
@@ -400,7 +422,7 @@ impl Kotoba {
                                             "about" => "page-about",
                                             _ => "page-general",
                                         },
-                                        v_flex().gap(px(18.)).children(notice).children(rows),
+                                        v_flex().gap(px(18.)).children(rows),
                                     )),
                             )
                             .vertical_scrollbar(&self.settings_scroll),
@@ -460,41 +482,57 @@ impl Kotoba {
         .into_any_element()
     }
 
-    /// The notice at the page's head, opening down from the title and
-    /// closing back as it goes.
+    /// The notice, in the window's top beside the section's name: room
+    /// that is there in every state, so a notice moves nothing on the page
+    /// (opened at the page's head, it pushed the page down at the press
+    /// that asked for it). At most two lines; what is cut is in its
+    /// tooltip. It fades in, fades out from what it last said, and goes at
+    /// a click.
     fn notice_line(&self, cx: &mut Context<Self>) -> Option<AnyElement> {
         let theme = cx.theme().clone();
         if let Some(n) = &self.notice {
-            *self.notice_kept.borrow_mut() = n.words.clone();
+            *self.notice_kept.borrow_mut() = (n.words.clone(), n.error);
         }
         let on = self.notice.is_some();
-        let error = self.notice.as_ref().is_some_and(|n| n.error);
-        let words = self.notice_kept.borrow().clone();
+        let moving = self.presence("notice", on, cx);
+        if !on && moving.is_none() {
+            return None;
+        }
+        let (words, error) = self.notice_kept.borrow().clone();
         let ink = if error { theme.danger } else { theme.muted_foreground };
-        self.fold_under(
-            "notice".into(),
-            on,
-            h_flex()
-                .w_full()
-                .gap(px(8.))
-                .px(px(12.))
-                .py(px(8.))
-                .rounded(px(10.))
-                .bg(if error { theme.danger.opacity(0.07) } else { theme.muted.opacity(0.6) })
-                .child(Icon::default().path(if error { "icons/triangle-alert.svg" } else { "icons/info.svg" }).with_size(px(14.)).text_color(ink).flex_shrink_0())
-                .child(div().flex_1().min_w_0().text_size(px(12.5)).whitespace_normal().text_color(theme.foreground).child(words))
-                .into_any_element(),
-            cx,
-        )
+        let all = words.clone();
+        let chip = h_flex()
+            .id("notice")
+            .min_w_0()
+            .flex_shrink(1.)
+            .max_w(px(460.))
+            .gap(px(7.))
+            .px(px(10.))
+            .py(px(5.))
+            .items_center()
+            .rounded(px(8.))
+            .bg(if error { theme.danger.opacity(0.08) } else { theme.muted.opacity(0.7) })
+            .cursor_pointer()
+            .on_mouse_down(MouseButton::Left, |_, _, cx| cx.stop_propagation())
+            .managed_tooltip(move |window, cx| tip_wrap(all.clone(), window, cx))
+            .when(on, |d| {
+                d.on_click(cx.listener(|this, _, _, cx| {
+                    this.notice = None;
+                    cx.notify();
+                }))
+            })
+            .child(Icon::default().path(if error { "icons/triangle-alert.svg" } else { "icons/info.svg" }).with_size(px(14.)).text_color(ink).flex_shrink_0())
+            .child(div().min_w_0().text_size(px(12.)).line_height(px(15.)).line_clamp(2).text_color(theme.foreground).child(words));
+        Some(match moving {
+            Some((coming, n)) => chip.with_animation(ElementId::Name(format!("notice-{n}").into()), Animation::new(FOLD_ANIM).with_easing(ease_out_quint()), move |d, t| d.opacity(if coming { t } else { 1. - t })).into_any_element(),
+            None => chip.into_any_element(),
+        })
     }
 
     /// Models: speech to text over post-processing, each with all its
-    /// models, and why a download stopped.
+    /// models. Why a download stopped is on that model's Download.
     fn models_rows(&mut self, cx: &mut Context<Self>) -> Vec<AnyElement> {
-        let theme = cx.theme().clone();
-        let mut rows = vec![self.dictate_lane(Lane::Speech, cx), self.dictate_lane(Lane::Clean, cx)];
-        rows.extend(self.dictate_dl_error.clone().map(|e| div().px(px(14.)).text_size(px(12.)).text_color(theme.danger).child(e).into_any_element()));
-        rows
+        vec![self.dictate_lane(Lane::Speech, cx), self.dictate_lane(Lane::Clean, cx)]
     }
 
     /// Dictation: one card of its key, the microphone, and how long the
@@ -525,7 +563,6 @@ impl Kotoba {
     /// is said of the key.
     fn key_row(&mut self, which: Trigger, under: &'static str, cx: &mut Context<Self>) -> AnyElement {
         let theme = cx.theme().clone();
-        let dark = theme.mode.is_dark();
         let control = which == Trigger::Control;
         let current = if control { self.cfg.app.control_key.clone() } else { self.cfg.app.dictate_key.clone() };
         let first = kotoba_core::config::AppConfig::default();
@@ -579,19 +616,33 @@ impl Kotoba {
                     })),
             )
             .child(self.pick_mark(pick_for, cx));
-        // Under the row: why a key was not taken, coming and going in
-        // motion from what it last said.
+        // Why a key was not taken stands in the line under the row's
+        // name, in the room of what the key does, and the two fade one
+        // into the other. A note folding open under the row moved the card
+        // at the press.
         let note = self.dictate_key_note.clone().filter(|_| self.key_for == which);
         if let Some(n) = &note {
             kept.borrow_mut().0 = n.clone();
         }
         let said = kept.borrow().0.clone();
-        let note = self.fold_under(format!("{field_id}-note"), note.is_some(), h_flex().w_full().pb(px(10.)).justify_end().text_size(px(12.)).text_color(theme.muted_foreground).child(key_text(&said)).into_any_element(), cx);
+        let noted = note.is_some();
+        let under = same_room(
+            field_id,
+            div().whitespace_nowrap().child(under).into_any_element(),
+            // One line's height, whatever its keys' caps: a cap is taller
+            // than the line, and the row grew by it at the press.
+            div().h(px(15.)).flex().items_center().text_color(theme.warning).child(key_text(&said)).into_any_element(),
+            noted,
+            self.presence(&format!("{field_id}-note"), noted, cx),
+        )
+        .into_any_element();
         // With Fn chosen and the Mac giving it a job of its own, a tap
         // would do both; with F1 to F12 and the Mac's keys doing what is
-        // printed on them, the key would not reach Kotoba at all. How to
-        // change it, in Keyboard settings. It goes once the window comes
-        // back with that done.
+        // printed on them, the key would not reach Kotoba at all. A mark
+        // on the key's field says so, its tooltip says what to change,
+        // and a click opens Keyboard settings. It goes once the window
+        // comes back with that done. A guide folding open under the row
+        // moved the card at the press that chose the key.
         let key_job = if crate::kotoba::key_has_use(&current) { self.key_use.flatten() } else { None };
         if let Some(job) = key_job {
             let mut kept = kept.borrow_mut();
@@ -611,57 +662,54 @@ impl Kotoba {
             };
             format!("{also} {}", t("Set it to Do Nothing."))
         };
-        let warn = theme.warning;
-        let guide = h_flex()
-            .w_full()
-            .gap(px(10.))
-            .pl(px(12.))
-            .pr(px(8.))
-            .py(px(8.))
-            .rounded(px(10.))
-            .bg(warn.opacity(if dark { 0.10 } else { 0.07 }))
-            .border_1()
-            .border_color(warn.opacity(0.35))
-            .child(Icon::default().path("icons/triangle-alert.svg").with_size(px(15.)).text_color(warn).flex_shrink_0())
-            // The button goes under the words where the line is too
-            // narrow for both, never squeezing them a word a line.
-            .child(
-                h_flex()
-                    .flex_1()
-                    .min_w_0()
-                    .flex_wrap()
-                    .items_center()
-                    .gap(px(8.))
-                    .child(key_text_wrap(&words).flex_grow(1.).flex_shrink(1.).flex_basis(px(150.)).min_w_0().text_size(px(12.5)))
-                    .child(small_pill("dictate-fn-settings", "icons/external-link.svg", "Keyboard Settings", Press::Quiet, false, &theme).flex_shrink_0().on_click(|_, _, cx| cx.open_url(crate::sys::KEYBOARD_SETTINGS_URL))),
-            )
-            .into_any_element();
-        let guide = self.fold_under(format!("{field_id}-fn-guide"), key_job.is_some(), div().pb(px(10.)).child(guide).into_any_element(), cx);
+        let words = format!("{words} {}", t("Click to open Keyboard Settings."));
+        let mark_moving = self.presence(&format!("{field_id}-job"), key_job.is_some(), cx);
+        let mark = (key_job.is_some() || mark_moving.is_some()).then(|| {
+            let mark = div()
+                .id(SharedString::from(format!("{field_id}-job")))
+                .absolute()
+                .right(px(6.))
+                .top(px(5.))
+                .size(px(18.))
+                .flex()
+                .items_center()
+                .justify_center()
+                .rounded(px(5.))
+                .cursor_pointer()
+                .hover(|s| s.bg(theme.warning.opacity(0.14)))
+                .managed_tooltip(move |window, cx| tip_wrap(words.clone(), window, cx))
+                .on_mouse_down(MouseButton::Left, |_, _, cx| cx.stop_propagation())
+                .on_click(|_, window, cx| {
+                    swallow_click(window, cx);
+                    cx.open_url(crate::sys::KEYBOARD_SETTINGS_URL);
+                })
+                .child(Icon::default().path("icons/triangle-alert.svg").with_size(px(14.)).text_color(theme.warning));
+            match mark_moving {
+                Some((coming, n)) => mark.with_animation(ElementId::Name(format!("{field_id}-job-{n}").into()), Animation::new(FOLD_ANIM).with_easing(ease_out_quint()), move |d, t| d.opacity(if coming { t } else { 1. - t })).into_any_element(),
+                None => mark.into_any_element(),
+            }
+        });
         let theme_ref = &theme;
-        v_flex()
-            .child(line(
-                t("Shortcut"),
-                Some(div().child(under).into_any_element()),
-                h_flex()
-                    .w(CONTROL_W)
-                    .items_center()
-                    .gap(px(8.))
-                    .child(div().flex_1().min_w_0().child(field))
-                    .child(more)
-                    .child(
-                        small_pill(reset_id, "icons/rotate.svg", t("Reset"), Press::Quiet, at_first, &theme)
-                            .h(px(28.))
-                            .min_w(DICTATE_PILL_W)
-                            .justify_center()
-                            .flex_shrink_0()
-                            .on_click(cx.listener(move |this, _, _, cx| this.reset_key(which, cx))),
-                    )
-                    .into_any_element(),
-                theme_ref,
-            ))
-            .children(note.map(|n| div().px(px(14.)).child(n)))
-            .children(guide.map(|g| div().px(px(14.)).child(g)))
-            .into_any_element()
+        line(
+            t("Shortcut"),
+            Some(under),
+            h_flex()
+                .w(CONTROL_W)
+                .items_center()
+                .gap(px(8.))
+                .child(div().relative().flex_1().min_w_0().child(field).children(mark))
+                .child(more)
+                .child(
+                    small_pill(reset_id, "icons/rotate.svg", t("Reset"), Press::Quiet, at_first, &theme)
+                        .h(px(28.))
+                        .min_w(DICTATE_PILL_W)
+                        .justify_center()
+                        .flex_shrink_0()
+                        .on_click(cx.listener(move |this, _, _, cx| this.reset_key(which, cx))),
+                )
+                .into_any_element(),
+            theme_ref,
+        )
     }
 
     /// Control: its key, and who takes what needs the screen read.
@@ -673,9 +721,12 @@ impl Kotoba {
             _ => "none",
         };
         let agents = div().w(CONTROL_W).child(self.segmented("agent", vec![("none", t("None").into()), ("claude", "Claude Code".into()), ("codex", "Codex".into())], chosen, Rc::new(|this, agent, _, cx| this.set_agent(if agent == "none" { "" } else { agent }, cx)), cx)).into_any_element();
-        let note = if chosen == "none" { t("For what needs the screen read. Nothing leaves this Mac.") } else { t("Reads the screen. What you say and what it reads go to that service.") };
+        // Both of the Agent's lines in one room: as long as the longer in
+        // every language, so a choice never changes the row's height.
+        let agent = chosen != "none";
+        let note = same_room("agent-line", div().child(t("For what needs the screen read. Nothing leaves this Mac.")).into_any_element(), div().child(t("Reads the screen. What you say and what it reads go to that service.")).into_any_element(), agent, self.presence("agent-line", agent, cx)).into_any_element();
         let key = self.key_row(Trigger::Control, t("Control this Mac by voice."), cx);
-        vec![group(None, None, vec![key, line(t("Agent"), Some(div().child(note).into_any_element()), agents, &theme)], &theme)]
+        vec![group(None, None, vec![key, line(t("Agent"), Some(note), agents, &theme)], &theme)]
     }
 
     /// How long what dictation writes is kept, and the way to it.
@@ -798,7 +849,10 @@ impl Kotoba {
             }));
             (Some(state), remove.into_any_element())
         } else {
-            let get = pill(format!("dictate-get-{}", m.key), "icons/download.svg", t("Download"), Press::Quiet).on_click(cx.listener(move |this, _, window, cx| {
+            // A download that stopped short says why on its own button:
+            // a line under the lanes lengthened the page at the press.
+            let failed = self.dictate_dl_error.as_ref().filter(|(k, _)| *k == m.key).map(|(_, why)| SharedString::from(why.clone()));
+            let get = pill(format!("dictate-get-{}", m.key), if failed.is_some() { "icons/triangle-alert.svg" } else { "icons/download.svg" }, t("Download"), Press::Quiet).when_some(failed, |d, why| d.managed_tooltip(move |window, cx| tip_wrap(why.clone(), window, cx))).on_click(cx.listener(move |this, _, window, cx| {
                 swallow_click(window, cx);
                 this.download_model(m, cx);
                 cx.notify();
@@ -969,7 +1023,10 @@ impl Kotoba {
         });
         let body = match empty {
             Some(empty) => empty.into_any_element(),
-            None => v_flex().relative().flex_1().min_h_0().child(v_flex().id(("history-rows", serial as usize)).flex_1().min_h_0().overflow_y_scroll().track_scroll(&scroll).child(body)).vertical_scrollbar(&scroll).into_any_element(),
+            // The list ends above the sheet's foot by its corner's room,
+            // so a row cut at its edge stays inside the corner: a sheet
+            // floats over the page and cannot be painted round.
+            None => v_flex().flex_1().min_h_0().pb(px(SHEET_FOOT)).child(v_flex().relative().flex_1().min_h_0().child(v_flex().id(("history-rows", serial as usize)).flex_1().min_h_0().overflow_y_scroll().track_scroll(&scroll).child(body)).vertical_scrollbar(&scroll)).into_any_element(),
         };
         // The folder the history is kept in, opened in Finder.
         let folder = div()
@@ -1289,7 +1346,7 @@ impl Kotoba {
                 .gap(px(8.))
                 .items_center()
                 .justify_end()
-                .child(foot_pill("copy-all", if copied { "icons/check.svg" } else { "icons/copy.svg" }, if copied { t("Copied") } else { t("Copy All") }, Press::Quiet, n == 0).when(n > 0 && !gone, |d| {
+                .child(foot_pill("copy-all", if copied { "icons/check.svg" } else { "icons/copy.svg" }, if copied { t("Copied") } else { t("Copy All") }, Press::Quiet, n == 0).w(COPY_W).justify_center().when(n > 0 && !gone, |d| {
                     d.on_click(cx.listener(move |this, _, window, cx| {
                         swallow_click(window, cx);
                         this.copy_text(copy_key.clone(), all_words.clone(), cx);

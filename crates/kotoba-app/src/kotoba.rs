@@ -9,7 +9,7 @@
 //! at the top of the screen is the only sign that it is on
 //! (`docs/dictation.md`).
 
-use std::cell::{Cell, RefCell};
+use std::cell::RefCell;
 use std::collections::{HashMap, VecDeque};
 use std::rc::Rc;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
@@ -292,16 +292,16 @@ pub struct Kotoba {
     pub section: &'static str,
     pub settings_scroll: ScrollHandle,
     /// The settings sliding down to Fn's guidance as it opens.
-    pub settings_glide: Cell<Option<(Instant, Instant)>>,
     pub notice: Option<Notice>,
     /// What the notice last said, drawn as it closes.
-    pub notice_kept: RefCell<SharedString>,
+    pub notice_kept: RefCell<(SharedString, bool)>,
     /// A press on the window's top that may become a move of it.
     pub win_move: bool,
 
     // Models.
     pub dictate_dl: Vec<(&'static str, Arc<AtomicU64>, Arc<AtomicBool>)>,
-    pub dictate_dl_error: Option<String>,
+    /// The model whose download stopped short, and why.
+    pub dictate_dl_error: Option<(&'static str, String)>,
 
     // The key.
     pub dictate_key_rec: bool,
@@ -359,7 +359,6 @@ pub struct Kotoba {
     pub seg_state: RefCell<HashMap<&'static str, (&'static str, &'static str, Option<Instant>)>>,
     pub seg_bounds: Rc<RefCell<HashMap<String, Bounds<Pixels>>>>,
     pub presences: RefCell<HashMap<String, (bool, Instant, u32)>>,
-    pub fold_h: RefCell<HashMap<String, Rc<Cell<f32>>>>,
 
     // Scroll routing.
     pub inner_live: RefCell<Vec<(ScrollHandle, Inner)>>,
@@ -462,9 +461,8 @@ impl Kotoba {
             focus_handle: cx.focus_handle(),
             section: "general",
             settings_scroll: ScrollHandle::new(),
-            settings_glide: Cell::new(None),
             notice: None,
-            notice_kept: RefCell::new(SharedString::default()),
+            notice_kept: RefCell::new((SharedString::default(), false)),
             win_move: false,
             dictate_dl: Vec::new(),
             dictate_dl_error: None,
@@ -501,7 +499,6 @@ impl Kotoba {
             seg_state: RefCell::new(HashMap::new()),
             seg_bounds: Rc::new(RefCell::new(HashMap::new())),
             presences: RefCell::new(HashMap::new()),
-            fold_h: RefCell::new(HashMap::new()),
             inner_live: RefCell::new(Vec::new()),
             inner_kept: RefCell::new(HashMap::new()),
             scroll_inner: None,
@@ -1348,7 +1345,11 @@ impl Kotoba {
                 match done {
                     Ok(()) => {}
                     Err(e) if e == "stopped" => {}
-                    Err(e) => this.dictate_dl_error = Some(tf("{model} did not finish downloading: {e}.", &[("model", &m.name), ("e", &e)])),
+                    Err(e) => {
+                        let why = tf("{model} did not finish downloading: {e}.", &[("model", &m.name), ("e", &e)]);
+                        this.dictate_dl_error = Some((m.key, why.clone()));
+                        this.say_error(why, cx);
+                    }
                 }
                 cx.notify();
             });
@@ -1543,12 +1544,6 @@ impl Kotoba {
             let _ = this.update(cx, |this, cx| {
                 if this.key_reads != n || this.key_use == Some(job) {
                     return;
-                }
-                // Coming up under the key's row while the settings show it:
-                // the settings slide down to it as it opens.
-                if job.is_some() && this.key_use.flatten().is_none() && this.window.is_some() && matches!(this.section, "dictation" | "control") {
-                    let now = Instant::now();
-                    this.settings_glide.set(Some((now, now)));
                 }
                 this.key_use = Some(job);
                 cx.notify();
@@ -2077,6 +2072,43 @@ impl Kotoba {
             "light" => self.set_appearance("light", window, cx),
             "key" => self.toggle_dictation(cx),
             "reset" => self.reset_key(Trigger::Dictate, cx),
+            // Each state the Updates button comes to, drawn; nothing is
+            // fetched. `check` is the button's own press: a real check.
+            "check" => self.check_updates_now(cx),
+            "checking" => self.update.checking = true,
+            "uptodate" => self.update.answered = true,
+            "checkfailed" => {
+                self.update.answered = true;
+                self.update.error = "GitHub answered 404".into();
+            }
+            "found" => self.update.available = Some("9.9.9".into()),
+            "downloading" => {
+                self.update.available = Some("9.9.9".into());
+                self.update.installing = true;
+                self.update.progress = Some((100, Some(100)));
+            }
+            "installing" => {
+                self.update.available = Some("9.9.9".into());
+                self.update.installing = true;
+                self.update.progress = None;
+            }
+            "installfailed" => {
+                self.update.available = Some("9.9.9".into());
+                self.update.install_error = "the disk image could not be opened".into();
+            }
+            // Opening at login waiting on the person in Login Items, the
+            // microphone refused, a key not taken, a download stopped.
+            "loginwait" => self.login = crate::sys::Login::Waiting,
+            "micrefused" => self.mic = crate::sys::Mic::Refused,
+            "keytaken" => {
+                self.key_for = Trigger::Dictate;
+                self.dictate_key_note = Some(tf("{key} is taken.", &[("key", &binding_signs("secondary-shift-space"))]));
+            }
+            "dlerror" => {
+                if let Some(m) = dictate::MODELS.iter().find(|m| !dictate::installed(m)) {
+                    self.dictate_dl_error = Some((m.key, tf("{model} did not finish downloading: {e}.", &[("model", &m.name), ("e", &"the connection was lost")])));
+                }
+            }
             // The notes that ask for a permission drawn as if neither
             // were given.
             "untrusted" => {

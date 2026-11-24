@@ -1,7 +1,9 @@
 //! The shared drawing: the button (a pill with an icon), keys drawn on
 //! caps, hover labels, a page fading in, the floating card's shadow, the
-//! motion's lengths, and the click that is swallowed without leaving a
-//! text drag open.
+//! motion's lengths, the click that is swallowed without leaving a text
+//! drag open, words whose room is that of all their states
+//! (`same_room`), and the paint that keeps a box's corners round
+//! (`round_corners`).
 
 use std::time::Duration;
 
@@ -344,4 +346,57 @@ pub fn tap_signs(tap: &kotoba_core::dictate::Tap) -> String {
 pub fn tip(text: impl Into<SharedString>, window: &mut Window, cx: &mut App) -> AnyView {
     let text: SharedString = text.into();
     gpui_component::tooltip::Tooltip::element(move |_, _| key_text(&text)).build(window, cx)
+}
+
+/// `tip` for a few sentences: they wrap at a reading width.
+pub fn tip_wrap(text: impl Into<SharedString>, window: &mut Window, cx: &mut App) -> AnyView {
+    let text: SharedString = text.into();
+    gpui_component::tooltip::Tooltip::element(move |_, _| key_text_wrap(&text).max_w(px(300.))).build(window, cx)
+}
+
+/// Words that change with a state, in one room: both states are laid in
+/// the same place and only the one in force is seen, so the room is the
+/// larger's in either and a press that changes the words moves nothing
+/// around them. A change (`moving`, from `Kotoba::presence`) fades the
+/// one out before the other comes in.
+pub fn same_room(id: &str, first: AnyElement, second: AnyElement, show_second: bool, moving: Option<(bool, u32)>) -> Div {
+    let cell = |el: AnyElement, show: bool, part: &str| {
+        let d = div().row_start(1).col_start(1).min_w_0().child(el);
+        match moving {
+            Some((_, n)) => d.with_animation(ElementId::Name(format!("{id}-{part}-{n}").into()), Animation::new(FOLD_ANIM).with_easing(ease_out_quint()), move |d, t| d.opacity(if show { (2. * t - 1.).max(0.) } else { (1. - 2. * t).max(0.) })).into_any_element(),
+            None => d.opacity(if show { 1. } else { 0. }).into_any_element(),
+        }
+    };
+    div().grid().grid_cols(1).child(cell(first, !show_second, "a")).child(cell(second, show_second, "b"))
+}
+
+/// What keeps a rounded box round where its content reaches a corner. A
+/// clip in gpui is a rectangle, `overflow_hidden` too, so a ground, a
+/// fade or a list scrolled under a corner stands square past the curve.
+/// Laid as the box's last child (the box `relative` and
+/// `overflow_hidden`), it paints the ground around the box over the
+/// corners' outsides: a ring whose inside edge is the box's rounded
+/// edge, clipped to the box. `edge` draws the box's border again over
+/// what reached it. The ground is the color as it is seen around the
+/// box, opaque: a translucent one paints only a tint, and the square
+/// corner shows through it. Nothing in the window reaches a corner now:
+/// a washed row is rounded to the card's radius less its edge, and a list
+/// on a sheet stops short of the sheet's foot, since a sheet floats over
+/// a page of many colors and cannot be painted round.
+#[allow(dead_code)]
+pub fn round_corners(radius: Pixels, ground: Hsla, edge: Option<Hsla>) -> AnyElement {
+    let b = if edge.is_some() { px(1.) } else { px(0.) };
+    let w = radius * 2.;
+    let mut ring = div().absolute().top(-w).left(-w).right(-w).bottom(-w).rounded(radius + w).border_color(ground);
+    let width: AbsoluteLength = w.into();
+    ring.style().border_widths = EdgesRefinement { top: Some(width), right: Some(width), bottom: Some(width), left: Some(width) };
+    div()
+        .absolute()
+        .top(-b)
+        .left(-b)
+        .right(-b)
+        .bottom(-b)
+        .child(ring)
+        .children(edge.map(|c| div().absolute().inset_0().rounded(radius).border_1().border_color(c)))
+        .into_any_element()
 }

@@ -13,8 +13,10 @@ It is Emaki's dictation moved into an app of its own (Emaki is at `../emaki`). K
 Kotoba's design is held to the level of Awwwards, the Webbys and the FWA: minimal, calm, intuitive, finished in every state (`docs/design.md`). Every change to the window meets it unasked.
 
 - **Nothing changes from one frame to the next.** What appears, goes, opens, closes, grows or moves does so over a moment. A jump is a bug. Use the pattern its neighbors use (`docs/window.md`, Motion).
+- **A press moves nothing.** A press changes what is in its own place and nothing else: no row, card, sheet or page grows, shrinks or moves by a pixel, in any direction. What it has to say goes in room that is there in every state (the button's own words, the line under the row's name, a mark in the row's empty room, the window's top for a notice, a tooltip for a reason), and a control whose words change is one width in every language (`PERMIT_W`, `UPDATE_W`, `MODEL_SLOT_W`, `COPY_W` in `settings.rs`; lines in `widgets::same_room`).
+- **No sharp corners.** A rounded box is round at every corner whatever is drawn in it. gpui clips content to the rectangle, never the rounded corner, so a ground near a corner is rounded to the box's radius less its inset, a list on a sheet stops short of the sheet's foot, and a box whose content reaches a corner over an opaque ground lays `widgets::round_corners` last.
 - **Words are few.** Say what to do once, to someone who can use a computer. No note that repeats what the control above it shows.
-- **Look before saying it is done:** at all the change shows, hides or moves, in both appearances (`docs/probing.md`).
+- **Look before saying it is done:** at all the change shows, hides or moves, in both appearances, at each state a press leads to beside the state before it (`scripts/press-diff.R`), and at every rounded box's corners enlarged (`scripts/corners.R`, `docs/probing.md`).
 
 ## Rules that hold everywhere
 
@@ -77,9 +79,9 @@ crates/kotoba-app/         the window
   src/main.rs                the app, its key bindings, the menu bar item's choices
   src/kotoba.rs              the app's one `Kotoba`: dictation, downloads, the key, permissions, updates
   src/settings.rs            the settings window: General, Dictation, Control, Models, About; the sheets
-  src/controls.rs            switches, choices that slide, lists that drop down, folds
-  src/scroll.rs              a gesture stays in the scroller it began in; a scroll a click starts glides
-  src/widgets.rs             the shared drawing: buttons, keys on caps, hover labels, the motion's lengths
+  src/controls.rs            switches, choices that slide, lists that drop down, what comes and goes
+  src/scroll.rs              a gesture stays in the scroller it began in
+  src/widgets.rs             the shared drawing: buttons, keys on caps, hover labels, the motion's lengths, same_room, round_corners
   src/pill.rs                the pill at the top of the screen
   src/act.rs                 control's hands: apps, keys, the pointer, what the screen shows
   src/agent.rs               the person's agent, run with Kotoba's tools alone
@@ -93,7 +95,7 @@ crates/kotoba-app/         the window
   macos/                     the Info.plist additions, the entitlements, the microphone's question in each language
 vendor/gpui-component/     the vendored toolkit, with its UPSTREAM.md
 vendor/llama.cpp/          libllama's sources, with its UPSTREAM.md
-scripts/                   dev-app.sh, relaunch.sh, make-icon.sh, make-readme-gif.sh and readme/, release-*.sh, dictate-sounds.py, control-sounds.R
+scripts/                   dev-app.sh, relaunch.sh, press-diff.R, corners.R, make-icon.sh, make-readme-gif.sh and readme/, release-*.sh, dictate-sounds.py, control-sounds.R
 docs/                      how each part works and its traps; release.md, how to cut a release; probing.md; optimize.md, the optimization passes and their log
 CHANGELOG.md               one section per release; the release job reads it
 ```

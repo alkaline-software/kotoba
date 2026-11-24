@@ -1,7 +1,7 @@
 //! The settings' controls: switches (`switch`), choices with a plate that
 //! slides (`segmented`), fields whose lists drop down (`settings_pick_h`,
-//! `render_pick`), what opens under a row (`fold_under`), and something
-//! small that comes and goes (`presence`). Each keeps its state on
+//! `render_pick`), and something small that comes and goes
+//! (`presence`). Each keeps its state on
 //! `Kotoba`, which outlives the window.
 
 use std::rc::Rc;
@@ -616,61 +616,6 @@ impl Kotoba {
             }
         }
         (p.2 > 0 && p.1.elapsed() < FOLD_ANIM).then_some((on, p.2))
-    }
-
-    /// `presence` for what is played the first time it is seen too.
-    fn arrival(&self, id: &str, on: bool, cx: &mut Context<Self>) -> Option<(bool, u32)> {
-        if on && !self.presences.borrow().contains_key(id) {
-            self.presence(id, false, cx);
-        }
-        self.presence(id, on, cx)
-    }
-
-    /// A card that opens down from the row over it, as a note under a
-    /// row of the settings: its height runs up from nothing and back, the
-    /// gap above it part of what moves. It measures itself as it is
-    /// drawn, and is drawn a moment more as it closes.
-    pub fn fold_under(&self, key: String, on: bool, card: AnyElement, cx: &mut Context<Self>) -> Option<AnyElement> {
-        let moving = self.arrival(&key, on, cx);
-        if !on && moving.is_none() {
-            self.fold_h.borrow_mut().remove(&key);
-            return None;
-        }
-        let tall = self.fold_h.borrow_mut().entry(key.clone()).or_default().clone();
-        let measure = on.then(|| {
-            let (tall, entity) = (tall.clone(), cx.entity().downgrade());
-            canvas(
-                move |b, _, cx| {
-                    let h = f32::from(b.size.height);
-                    if (tall.get() - h).abs() > 0.5 {
-                        tall.set(h);
-                        if let Some(e) = entity.upgrade() {
-                            cx.defer(move |cx| e.update(cx, |_, cx| cx.notify()));
-                        }
-                    }
-                },
-                |_, _, _, _| {},
-            )
-            .absolute()
-            .inset_0()
-        });
-        let gap = 8.;
-        let inner = div().relative().w_full().flex_shrink_0().child(card).children(measure).when(!on, |d| d.child(div().absolute().inset_0().occlude()));
-        let wrap = v_flex().w_full().justify_start().overflow_hidden().child(div().h(px(gap)).flex_shrink_0()).child(inner);
-        Some(match moving {
-            Some((coming, n)) => wrap
-                .with_animation(ElementId::Name(format!("{key}-{n}").into()), Animation::new(FOLD_ANIM).with_easing(ease_out_quint()), move |d, t| {
-                    let t = if coming { t } else { 1. - t };
-                    let h = tall.get();
-                    if h <= 0. {
-                        d.h(px(0.)).opacity(0.)
-                    } else {
-                        d.h(px(((h + gap) * t).ceil())).opacity(t)
-                    }
-                })
-                .into_any_element(),
-            None => wrap.into_any_element(),
-        })
     }
 
     /// Empty space along the window's top moves the window. The app owns

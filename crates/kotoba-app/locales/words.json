@@ -1304,15 +1304,6 @@
     "de": "Suche …",
     "es": "Buscando…"
   },
-  "Updating…": {
-    "zh-Hans": "正在更新…",
-    "zh-Hant": "正在更新…",
-    "ja": "アップデート中…",
-    "ko": "업데이트 중…",
-    "fr": "Mise à jour…",
-    "de": "Aktualisiere …",
-    "es": "Actualizando…"
-  },
   "Update to {v}": {
     "zh-Hans": "更新到 {v}",
     "zh-Hant": "更新到 {v}",
@@ -1366,15 +1357,6 @@
     "fr": "Impossible de joindre GitHub.",
     "de": "GitHub ist nicht erreichbar.",
     "es": "No se pudo conectar con GitHub."
-  },
-  "Up to date.": {
-    "zh-Hans": "已是最新版本。",
-    "zh-Hant": "已是最新版本。",
-    "ja": "最新です。",
-    "ko": "최신 버전입니다.",
-    "fr": "À jour.",
-    "de": "Auf dem neuesten Stand.",
-    "es": "Está al día."
   },
   "Release notes": {
     "zh-Hans": "更新说明",
@@ -1672,5 +1654,50 @@
     "fr": "Contrôlez ce Mac à la voix.",
     "de": "Diesen Mac per Stimme steuern.",
     "es": "Controla este Mac con la voz."
+  },
+  "Up to date": {
+    "zh-Hans": "已是最新版本",
+    "zh-Hant": "已是最新版本",
+    "ja": "最新です",
+    "ko": "최신 버전",
+    "fr": "À jour",
+    "de": "Aktuell",
+    "es": "Al día"
+  },
+  "Check failed": {
+    "zh-Hans": "检查失败",
+    "zh-Hant": "檢查失敗",
+    "ja": "確認できませんでした",
+    "ko": "확인 실패",
+    "fr": "Échec de la recherche",
+    "de": "Suche fehlgeschlagen",
+    "es": "Error al buscar"
+  },
+  "Update failed": {
+    "zh-Hans": "更新失败",
+    "zh-Hant": "更新失敗",
+    "ja": "アップデートできませんでした",
+    "ko": "업데이트 실패",
+    "fr": "Échec de la mise à jour",
+    "de": "Update fehlgeschlagen",
+    "es": "Error al actualizar"
+  },
+  "Installing…": {
+    "zh-Hans": "正在安装…",
+    "zh-Hant": "正在安裝…",
+    "ja": "インストール中…",
+    "ko": "설치 중…",
+    "fr": "Installation…",
+    "de": "Installiere …",
+    "es": "Instalando…"
+  },
+  "Click to open Keyboard Settings.": {
+    "zh-Hans": "点按以打开“键盘”设置。",
+    "zh-Hant": "按一下以打開「鍵盤」設定。",
+    "ja": "クリックすると「キーボード」設定が開きます。",
+    "ko": "클릭하면 ‘키보드’ 설정이 열립니다.",
+    "fr": "Cliquez pour ouvrir les réglages Clavier.",
+    "de": "Klicke, um die Tastatur-Einstellungen zu öffnen.",
+    "es": "Haz clic para abrir los ajustes de Teclado."
   }
 }

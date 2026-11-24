@@ -1,6 +1,6 @@
 //! A scroll gesture belongs to the scroller it began in, its momentum
 //! included, wherever the pointer is carried, and stops at that
-//! scroller's edge; and a scroll a click starts glides to its place.
+//! scroller's edge.
 //!
 //! Every scroller that goes up and down names itself as it is drawn
 //! (`inner_scroller`, `kept_scroll`). One that does not leaks: a flick in
@@ -11,15 +11,10 @@ use std::time::{Duration, Instant};
 use gpui::*;
 
 use crate::kotoba::{Inner, Kotoba};
-use crate::widgets::FOLD_ANIM;
 
 /// A wheel event this long after the previous one begins a new gesture: a
 /// mouse wheel sends no phases, and momentum comes at frame rate.
 const SCROLL_GAP: Duration = Duration::from_millis(150);
-
-/// The settings' slide to Fn's guidance: the share of what is left that
-/// each frame takes.
-const GLIDE_EASE: f32 = 0.07;
 
 impl Kotoba {
     /// A scroller drawn now: `route_scroll` keeps a gesture that begins in
@@ -79,29 +74,6 @@ impl Kotoba {
         }
         if inner.is_some() {
             cx.stop_propagation();
-        }
-    }
-
-    /// One frame of the settings sliding to their end, where Fn's guidance
-    /// opens: a share of what is left each frame, for as long as the
-    /// guidance is growing and a moment after.
-    pub fn settings_glide_step(&self, window: &mut Window) {
-        let Some((began, last)) = self.settings_glide.take() else { return };
-        let scroll = &self.settings_scroll;
-        let to = -f32::from(scroll.max_offset().y);
-        let at = scroll.offset();
-        let left = to - f32::from(at.y);
-        let growing = began.elapsed() < FOLD_ANIM + Duration::from_millis(250);
-        if left.abs() < 0.5 && !growing {
-            return;
-        }
-        let now = Instant::now();
-        let dt = (now - last).as_secs_f32().min(0.05);
-        let step = left * (1. - (-dt / GLIDE_EASE).exp());
-        scroll.set_offset(point(at.x, at.y + px(step)));
-        if growing || left.abs() >= 0.5 {
-            self.settings_glide.set(Some((began, now)));
-            window.request_animation_frame();
         }
     }
 }
