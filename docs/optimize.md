@@ -1,6 +1,6 @@
 # Optimization
 
-About keeping Kotoba fast and light: the three aims of a pass, how one is done, the rules passes have left, and the log that makes each pass start where the last one stopped. The studio's method is the constitution's `docs/optimize.md`; this page is Kotoba's own part of it.
+About keeping Kotoba fast and light: the three aims of a pass, how one is done, the rules passes have left, and the log that makes each pass start where the last one stopped. The studio's method is the standards' `docs/optimize.md`; this page is Kotoba's own part of it.
 
 ## Rules
 
